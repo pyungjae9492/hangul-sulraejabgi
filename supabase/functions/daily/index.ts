@@ -171,6 +171,38 @@ async function board(uid: string, b: any) {
   return { ...(data as object), nickname };
 }
 
+// 폰에 남은 단계별 정답으로 서버 기록을 맞춘다. 서버가 모르는 단계만, 1단계부터 이어서, 정답이 그 판을 실제로 풀 때만 받는다.
+// 시간은 폰이 잰 값을 쓰되 1초~그 단계 제한 시간 사이로 자른다.
+async function sync(uid: string, b: any) {
+  const day = checkDay(b.day, true);
+  const words = b.words && typeof b.words === 'object' ? b.words : {};
+  const times = b.times && typeof b.times === 'object' ? b.times : {};
+  await player(uid);
+  await runOf(uid, day, ATTEMPT);
+  const rows = await stagesOf(uid, day, ATTEMPT);
+  const set = setFor(day);
+  let added = 0;
+  for (let n = 1; n <= D.TOTAL; n++) {
+    const ex = rows.find((r) => r.stage === n);
+    if (ex && ex.cleared_at) continue;
+    const w = typeof words[n] === 'string' ? words[n].trim() : '';
+    if ([...w].length !== 2 || !WORD_SET.has(w) || !H.findPath(set[n - 1].board, w)) break;
+    const lim = set[n - 1].seconds * 1000;
+    let ms = Number(times[n]);
+    if (!Number.isFinite(ms)) ms = lim;
+    ms = Math.min(Math.max(ms, 1000), lim);
+    const now = Date.now() + added; // 같은 시각으로 겹치지 않게
+    must(await admin.from('daily_stages').upsert({
+      user_id: uid, day, attempt: ATTEMPT, stage: n,
+      started_at: new Date(now - ms).toISOString(), deadline: new Date(now - ms + lim + GRACE_MS).toISOString(),
+      cleared_at: new Date(now).toISOString(), word: w, hinted: ex?.hinted || false,
+    }, { onConflict: 'user_id,day,attempt,stage' }));
+    added++;
+  }
+  if (added) must(await admin.from('daily_runs').update({ synced: true }).eq('user_id', uid).eq('day', day).eq('attempt', ATTEMPT));
+  return { ok: true, added, ...(await recompute(uid, day, ATTEMPT)) };
+}
+
 async function invitesOf(uid: string, day: string) {
   return must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).order('created_at', { ascending: false })) as any[];
 }
@@ -250,6 +282,7 @@ Deno.serve(async (req) => {
       case 'invite': return json(await invite(uid, body, fp));
       case 'invite_status': return json(await inviteStatus(uid, body));
       case 'visit': return json(await visit(uid, body, fp));
+      case 'sync': return json(await sync(uid, body));
       default: return json({ error: 'action' }, 400);
     }
   } catch (e) {

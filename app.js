@@ -734,6 +734,12 @@
       .catch((e) => { console.warn('랭킹 기록 실패', action, e.message); return null; });
   }
 
+  // 폰에 남은 정답으로 서버 기록을 맞춘다. 서버가 이미 아는 단계는 건너뛰니 여러 번 불러도 괜찮다.
+  function syncDaily2Server() {
+    if (!Rank || !Object.keys(daily.words || {}).length) return Promise.resolve(null);
+    return rankSend('sync', { words: daily.words, times: daily.times });
+  }
+
   function endRun() {
     daily.final = true;
     daily.deadline = null;
@@ -958,6 +964,7 @@
       (Rank ? '<li class="sr-rank"><button type="button" id="settle-rank"><span class="sr-lv">오늘 랭킹</span><span class="sr-val" id="settle-rank-val">불러오는 중…</span></button></li>' : '');
     if (Rank) {
       $('#settle-rank').onclick = () => openRank(showSettle);
+      syncDaily2Server();
       rankSend('board').then((b) => {
         const v = $('#settle-rank-val');
         if (!v) return;
@@ -1084,6 +1091,7 @@
   }
 
   async function loadRank() {
+    syncDaily2Server();
     const b = await rankSend('board');
     if (!b) { $('#rank-me').innerHTML = '<p class="rank-note">랭킹을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.</p>'; return; }
     state.rank = Object.assign({ day: daily.date }, b);
