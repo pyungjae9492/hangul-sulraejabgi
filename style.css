@@ -402,6 +402,19 @@ b { font-weight: 800; }
 .c-vgrid { display: grid; grid-template-columns: repeat(4, auto); gap: 6px; }
 .c-vgrid span { padding: 7px 10px; border-radius: 10px; background: #1F2128; font-size: 14px; font-weight: 800; color: var(--purple-text); white-space: nowrap; }
 .c-vgrid span.off { color: var(--dim); }
+.c-vgrid.wide { grid-template-columns: repeat(4, 1fr); width: 100%; }
+.c-vgrid em { font-style: normal; margin-left: 2px; }
+.c-list { width: 100%; display: grid; gap: 8px; }
+.c-ex { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 16px; background: #1A1B21; border: 1px solid var(--line); }
+.c-ex.off .c-tile { opacity: .55; }
+.c-tile.sm { width: 44px; height: 44px; font-size: 22px; border-radius: 12px; flex: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 4px 0 var(--side); }
+.c-ex-chips { flex: none; display: flex; gap: 4px; }
+.c-ex-note { font-size: 14px; line-height: 1.45; color: var(--soft); }
+.c-ex-note b { color: var(--text); }
+.c-ico { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--tile); font-family: var(--display); font-size: 18px; color: var(--text); }
+.c-ico svg { width: 55%; }
+.c-ico.c { color: var(--coral); background: #3A2329; }
+.c-ico.g { color: var(--ink); background: var(--gold); font-family: var(--body); font-weight: 900; }
 .c-book { width: 86px; height: 104px; border-radius: 10px 16px 16px 10px; display: grid; place-items: center; font-family: var(--display); font-size: 24px; line-height: 1.2; text-align: center; background: linear-gradient(180deg, #3A3D48, #2E3039); box-shadow: inset 6px 0 0 #23252D, 0 7px 0 var(--side); }
 .c-credit { text-align: center; display: grid; gap: 8px; justify-items: center; }
 .c-credit .show { font-family: var(--display); font-size: 30px; }

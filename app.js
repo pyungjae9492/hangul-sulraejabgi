@@ -563,7 +563,7 @@
   }
 
   /* ---------- 튜토리얼 ---------- */
-  const TUT_STEPS = 10;
+  const TUT_STEPS = 11;
 
   function coachLetters(word, used) {
     return [...word].map((ch, i) => ({ ch, used: used[i] }));
@@ -615,10 +615,26 @@
   const CONCEPT = {
     what: '<div class="concept"><div class="c-row"><span class="c-tile tile3d start">ㅊ</span><span class="c-arrow m">⋯</span><span class="c-tile tile3d goal">' + FLAG_ICON + '</span></div>' +
       '<div class="c-row"><span class="c-tile word">?</span><span class="c-tile word">?</span></div></div>',
-    cons: '<div class="concept"><div class="c-row"><span class="c-tile tile3d big">칙</span><span class="c-eq">=</span><span class="c-jamo o">ㅊ</span><span class="c-jamo">ㅣ</span><span class="c-jamo o">ㄱ</span></div>' +
-      '<div class="c-row"><span class="c-tile tile3d start">ㅊ</span><span class="c-arrow o">→</span><span class="c-tile tile3d">ㄱ</span></div></div>',
-    vowel: '<div class="concept"><div class="c-row"><span class="c-tile tile3d big">규</span><span class="c-eq">=</span><span class="c-jamo">ㄱ</span><span class="c-jamo p">ㅠ</span></div>' +
-      '<div class="c-vgrid"><span>ㅏ →1</span><span>ㅑ →2</span><span>ㅓ ←1</span><span>ㅕ ←2</span><span>ㅗ ↑1</span><span>ㅛ ↑2</span><span>ㅜ ↓1</span><span>ㅠ ↓2</span><span>ㅘ ↗1</span><span>ㅝ ↙1</span><span class="off">ㅡ 없음</span><span class="off">ㅣ 없음</span></div></div>',
+    cons: '<div class="concept"><div class="c-list">' +
+      '<div class="c-ex"><span class="c-tile tile3d sm">칙</span><span class="c-ex-chips"><span class="chip o">ㅊ↔ㄱ</span></span><span class="c-ex-note">초성↔받침, 양쪽 다 가요</span></div>' +
+      '<div class="c-ex"><span class="c-tile tile3d sm">닭</span><span class="c-ex-chips"><span class="chip o">ㄷ↔ㄹ↔ㄱ</span></span><span class="c-ex-note">겹받침은 자음을 모두 써요</span></div>' +
+      '<div class="c-ex off"><span class="c-tile tile3d sm">꼭</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">ㄲ은 ㄱ이라 한 종류뿐</span></div>' +
+      '<div class="c-ex off"><span class="c-tile tile3d sm">가</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">받침이 없으면 못 해요</span></div>' +
+      '</div></div>',
+    vowel: '<div class="concept"><div class="c-vgrid wide">' +
+      '<span>ㅏ ㅐ <em>→1</em></span><span>ㅑ ㅒ <em>→2</em></span><span>ㅓ ㅔ <em>←1</em></span><span>ㅕ ㅖ <em>←2</em></span>' +
+      '<span>ㅗ ㅚ <em>↑1</em></span><span>ㅛ <em>↑2</em></span><span>ㅜ ㅟ <em>↓1</em></span><span>ㅠ <em>↓2</em></span>' +
+      '<span>ㅘ ㅙ <em>↗1</em></span><span>ㅝ ㅞ <em>↙1</em></span><span class="off">ㅡ ㅣ ㅢ <em>없음</em></span>' +
+      '</div><div class="c-list">' +
+      '<div class="c-ex"><span class="c-tile tile3d sm">규</span><span class="c-ex-chips"><span class="chip p">↓2</span></span><span class="c-ex-note">사이 빈자리는 건너뛰어요</span></div>' +
+      '<div class="c-ex off"><span class="c-tile tile3d sm">그</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">튀어나온 획이 없어요</span></div>' +
+      '</div></div>',
+    more: '<div class="concept"><div class="c-list">' +
+      '<div class="c-ex"><span class="c-ico">ㄱ</span><span class="c-ex-note"><b>같은 자음이 여러 칸</b>이면 그중 어느 칸으로든 자음 점프할 수 있어요</span></div>' +
+      '<div class="c-ex"><span class="c-ico c">' + FLAG_ICON + '</span><span class="c-ex-note"><b>깃발에 닿으면 바로 끝</b>. 깃발 칸에 자음이 있어도 그 칸에서 다시 점프하지 않아요</span></div>' +
+      '<div class="c-ex"><span class="c-ico">✕</span><span class="c-ex-note"><b>점프할 자리에 칸이 없으면</b> 그 점프는 쓸 수 없어요</span></div>' +
+      '<div class="c-ex"><span class="c-ico g">!</span><span class="c-ex-note">판에 따라 <b>모음 점프만</b>, <b>모든 칸 밟기</b> 같은 <b>추가 조건</b>이 붙어요</span></div>' +
+      '</div></div>',
     dict: '<div class="concept"><div class="c-book">표준<br>국어<br>대사전</div><div class="c-row"><span class="c-tile word" style="color:var(--mint);border-color:var(--mint)">✓</span><span class="c-tile word" style="color:var(--coral);border-color:var(--coral)">✕</span></div></div>',
     credit: '<div class="concept c-credit"><span class="show">네 가지 소원</span><span class="ep">EP.2 · 3회전 데스매치 〈숨바꼭질〉</span></div>',
   };
@@ -670,12 +686,12 @@
     if (!alive()) return;
     tutConcept(CONCEPT.cons);
     await coach({ step: 1, title: '<span class="o">자음 점프</span>',
-      sub: '밟고 있는 자음에서 <b>같은 글자 안의 다른 자음 칸</b>으로 건너뛰어요. ㅊ 칸에서 <b>칙</b>을 쓰면 ㄱ 칸으로 가요.',
+      sub: '밟고 있는 자음에서 <b>같은 글자 안의 다른 자음 칸</b>으로 건너뛰어요. 받침에서 초성으로도 가요. <b>받침이 없거나 자음이 한 종류뿐</b>인 글자는 자음 점프가 없어요.',
       next: '다음' });
     if (!alive()) return;
     tutConcept(CONCEPT.vowel);
     await coach({ step: 2, title: '<span class="p">모음 점프</span>',
-      sub: '모음의 획이 튀어나온 방향으로 <b>획 개수만큼</b> 이동해요. ㄱ 칸에서 <b>규</b>를 쓰면 아래로 2칸.',
+      sub: '모음의 획이 튀어나온 방향으로 <b>획 개수만큼</b> 이동해요. ㅘ·ㅝ는 대각선 1칸. <b>ㅡ ㅣ ㅢ</b>는 튀어나온 획이 없어 모음 점프가 없어요.',
       next: '다음' });
     if (!alive()) return;
 
@@ -716,13 +732,16 @@
       next: '다음' });
     if (!alive()) return;
 
+    tutConcept(CONCEPT.more);
+    await coach({ step: 8, title: '더 알아 둘 것', sub: '실제 판에서 헷갈리기 쉬운 규칙이에요.', next: '다음' });
+    if (!alive()) return;
     tutConcept(CONCEPT.dict);
-    await coach({ step: 8, title: '사전에 있는 단어만',
+    await coach({ step: 9, title: '사전에 있는 단어만',
       sub: '정답은 <b>표준국어대사전</b>을 기준으로 한 <b>두 글자 명사</b>만 인정돼요. 사전에 없는 단어는 길이 맞아도 정답이 아니에요. 대신 감점은 없어요.',
       next: '다음' });
     if (!alive()) return;
     tutConcept(CONCEPT.credit);
-    await coach({ step: 9, title: '만든 이야기',
+    await coach({ step: 10, title: '만든 이야기',
       sub: '자모 점프는 웹 예능 〈네 가지 소원〉 EP.2의 <b>숨바꼭질</b> 게임을 차용해 만들었어요. <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상 보기</a>',
       next: '스테이지 1 시작' });
     if (!alive()) return;
