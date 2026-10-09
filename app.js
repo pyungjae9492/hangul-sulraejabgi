@@ -80,12 +80,26 @@
   const center = (p) => [p[0] * (1 + G) + 0.5, p[1] * (1 + G) + 0.5];
 
   function renderBoard(host, board) {
+    return drawBoard(host, board);
+  }
+
+  // 칸 크기: 평소엔 화면 폭에 맞추고, 키패드가 올라와 있으면 남은 높이 안에 판 전체가 들어오게 더 줄인다.
+  function sizeBoard(host) {
+    const byWidth = 'calc((min(100vw, 520px) - 40px) / ' + host.dataset.span + ')';
+    let cap = '80px';
+    if (document.body.classList.contains('kb') && host.clientHeight) cap = Math.max(26, Math.floor((host.clientHeight - 14) / Number(host.dataset.tall))) + 'px';
+    host.style.setProperty('--cell', 'min(' + cap + ', ' + byWidth + ')');
+  }
+
+  function drawBoard(host, board) {
     const cols = Math.max(...board.tiles.map((t) => t.x)) + 1;
     const rows = Math.max(...board.tiles.map((t) => t.y)) + 1;
     host.innerHTML = '';
     // 열이 많은 판(외길 등)도 화면 폭 안에 들어오도록 칸 크기를 열 수에 맞춘다.
     const span = cols * (1 + G) - G + 0.6;
-    if (!host.classList.contains('demo')) host.style.setProperty('--cell', 'min(80px, calc((min(100vw, 520px) - 40px) / ' + Math.max(5.2, span).toFixed(2) + '))');
+    host.dataset.span = Math.max(5.2, span).toFixed(2);
+    host.dataset.tall = (rows * (1 + G) - G + 0.95).toFixed(2);
+    if (!host.classList.contains('demo')) sizeBoard(host);
     const mat = el('div', 'mat');
     const plane = el('div', 'plane');
     plane.style.setProperty('--cols', cols);
@@ -387,6 +401,7 @@
   function renderAbilities() {
     const box = $('#abilities');
     const sy = typed();
+    $('#field').classList.toggle('ready', sy.length === 2);
     if (!sy.length) {
       if (state.hintAnswer) {
         box.innerHTML = '<span class="prompt"><span class="hint-tile">' + state.hintAnswer.word[0] + '</span><span class="hint-tile q">?</span>로 시작하는 단어</span>';
@@ -1365,6 +1380,31 @@
   $('#btn-hint').addEventListener('click', onHint);
   $('#dock').addEventListener('submit', onSubmit);
   $('#answer').addEventListener('input', renderAbilities);
+
+  // 키패드가 올라오면(보이는 영역이 크게 줄면) 헤더를 숨기고, 놀이 화면을 보이는 영역에 딱 맞춰 고정한다.
+  // iOS는 키패드가 열리면 페이지 전체를 밀어 올리기 때문에, 보이는 영역의 위치(offsetTop)를 따라간다.
+  const vv = window.visualViewport;
+  if (vv) {
+    let fullH = vv.height;
+    const fit = () => {
+      const typing = document.activeElement === $('#answer');
+      if (!typing) fullH = Math.max(vv.height, window.innerHeight * 0.6);
+      const kb = typing && vv.height < fullH - 120;
+      const rs = document.documentElement.style;
+      rs.setProperty('--vvh', Math.round(vv.height) + 'px');
+      rs.setProperty('--vvt', Math.round(vv.offsetTop) + 'px');
+      if (kb !== document.body.classList.contains('kb')) {
+        document.body.classList.toggle('kb', kb);
+        if (!kb) window.scrollTo(0, 0);
+      }
+      const host = $('#board');
+      if (host.dataset.span) requestAnimationFrame(() => sizeBoard(host));
+    };
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    $('#answer').addEventListener('focus', () => setTimeout(fit, 60));
+    $('#answer').addEventListener('blur', () => setTimeout(fit, 60));
+  }
   $('#intro-go').addEventListener('click', () => {
     const go = state.introGo;
     state.introGo = null;
