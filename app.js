@@ -1134,7 +1134,6 @@
 
   // 공유 문구. code가 있으면 이어하기를 열어 달라는 부탁, 없으면 결과 자랑.
   // 받은 사람이 무엇을 누르면 되는지, 눌러서 뭘 하게 되는지가 바로 보이게 쓴다.
-  const fmtLong = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); const m = Math.floor(s / 60); return (m ? m + '분 ' : '') + (s % 60) + '초'; };
   function shareText(code) {
     const reached = clearedCount();
     const blocks = Array.from({ length: TOTAL }, (_, i) => {
@@ -1144,28 +1143,27 @@
       return '⬜';
     });
     const grid = blocks.slice(0, 10).join('') + '\n' + blocks.slice(10).join('');
-    const day = Number(daily.date.slice(5, 7)) + '월 ' + Number(daily.date.slice(8, 10)) + '일';
+    const rk = state.rank && state.rank.day === daily.date ? state.rank : null;
+    const nick = rk && rk.nickname ? rk.nickname + '님' : '';
     if (code) {
       return [
-        '🙏 링크 한 번만 눌러 주세요!',
-        '자모 점프 오늘의 도전 ' + currentStage() + '단계에서 시간이 다 됐어요.',
-        '아래 링크를 열어 주면 제가 이어서 할 수 있어요. 가입 없이 누르기만 하면 돼요.',
-        '',
+        (nick ? nick + '이' : '제가') + ' 자모 점프 ' + currentStage() + '단계에서 시간이 다 됐어요 😭',
+        '아래 링크를 한 번만 눌러 주면 이어서 도전할 수 있어요!',
         '👉 https://jamojump.app/?r=' + code,
         '',
-        '두 글자 단어로 깃발까지 점프하는 한글 퍼즐이에요. 들어온 김에 오늘 문제도 풀어 봐요!',
+        '두 글자 단어로 깃발까지 점프하는 한글 퍼즐이에요. 같이 풀어 봐요!',
       ].join('\n');
     }
-    const rank = state.rank && state.rank.day === daily.date && state.rank.me ? state.rank.me : null;
-    const head = daily.status === 'done' ? '20단계 완주했어요! 🎉' : reached + '단계까지 올라갔어요';
+    const who = nick ? nick + '은' : '저는';
+    const stars = '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars());
     return [
-      '🧩 자모 점프 · ' + day + ' 오늘의 도전',
-      head + ' ' + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' (' + fmtLong(totalTime()) + ')',
-      grid,
-      rank ? '🏆 오늘 ' + state.rank.total + '명 중 ' + rank.rank + '위' : '',
+      '🧩 자모 점프 · 오늘의 도전',
       '',
-      '두 글자 단어 하나로 깃발까지 점프하는 한글 퍼즐이에요.',
-      '오늘 문제는 모두 같아요. 몇 단계까지 갈 수 있는지 겨뤄 봐요!',
+      daily.status === 'done' ? who + ' 20단계를 모두 성공했어요! 🎉' : who + ' ' + reached + '단계까지 성공했어요! ' + stars,
+      grid,
+      rk && rk.me ? '🏆 오늘 ' + rk.total + '명 중 ' + rk.me.rank + '위' : '',
+      '',
+      daily.status === 'done' ? '이 기록, 깰 수 있을까요?' : '같은 문제, 더 많이 풀 수 있을까요?',
       '👉 https://jamojump.app',
     ].filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
   }
