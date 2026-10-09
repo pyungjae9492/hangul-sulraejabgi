@@ -1034,7 +1034,7 @@
     if (!r || !r.code) { toast('인터넷에 연결되어 있어야 링크를 만들 수 있어요', 'bad'); return; }
     daily.invite = { code: r.code, unlocked: !!r.unlocked, by: null };
     saveDaily();
-    if (!r.unlocked && await shareDaily(r.code)) toast('링크를 보냈어요. 친구가 열면 바로 알려 드릴게요', 'ok');
+    if (!r.unlocked && await shareDaily(r.code) && navigator.share) toast('링크를 보냈어요. 친구가 열면 바로 알려 드릴게요', 'ok');
     renderResume();
   }
 
@@ -1132,8 +1132,10 @@
     return '다음 도전까지 ' + (h ? h + '시간 ' : '') + m + '분';
   }
 
-  // code가 있으면 이어하기 초대 링크로 보낸다.
-  async function shareDaily(code) {
+  // 공유 문구. code가 있으면 이어하기를 열어 달라는 부탁, 없으면 결과 자랑.
+  // 받은 사람이 무엇을 누르면 되는지, 눌러서 뭘 하게 되는지가 바로 보이게 쓴다.
+  const fmtLong = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); const m = Math.floor(s / 60); return (m ? m + '분 ' : '') + (s % 60) + '초'; };
+  function shareText(code) {
     const reached = clearedCount();
     const blocks = Array.from({ length: TOTAL }, (_, i) => {
       const n = i + 1;
@@ -1141,19 +1143,41 @@
       if (n === reached + 1 && daily.status === 'failed') return '🟥';
       return '⬜';
     });
-    const rowsTxt = [blocks.slice(0, 10).join(''), blocks.slice(10).join('')];
-    const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'),
-      (daily.status === 'done' ? '완주! ' : reached + '/20 ') + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' · ' + fmt(totalTime()),
-      ...rowsTxt, daily.resumes ? '이어하기 ' + daily.resumes + '번' : '',
-      state.rank && state.rank.day === daily.date && state.rank.me ? '🏆 오늘 ' + state.rank.me.rank + '위 (상위 ' + pct(state.rank.me.rank, state.rank.total) + '%)' : '',
-      code ? '\n' + (currentStage()) + '단계에서 멈췄어요. 이 링크로 들어와 주면 이어서 할 수 있어요 🙏' : '',
-      code ? 'https://jamojump.app/?r=' + code : 'https://jamojump.app'].filter(Boolean).join('\n');
+    const grid = blocks.slice(0, 10).join('') + '\n' + blocks.slice(10).join('');
+    const day = Number(daily.date.slice(5, 7)) + '월 ' + Number(daily.date.slice(8, 10)) + '일';
+    if (code) {
+      return [
+        '🙏 링크 한 번만 눌러 주세요!',
+        '자모 점프 오늘의 도전 ' + currentStage() + '단계에서 시간이 다 됐어요.',
+        '아래 링크를 열어 주면 제가 이어서 할 수 있어요. 가입 없이 누르기만 하면 돼요.',
+        '',
+        '👉 https://jamojump.app/?r=' + code,
+        '',
+        '두 글자 단어로 깃발까지 점프하는 한글 퍼즐이에요. 들어온 김에 오늘 문제도 풀어 봐요!',
+      ].join('\n');
+    }
+    const rank = state.rank && state.rank.day === daily.date && state.rank.me ? state.rank.me : null;
+    const head = daily.status === 'done' ? '20단계 완주했어요! 🎉' : reached + '단계까지 올라갔어요';
+    return [
+      '🧩 자모 점프 · ' + day + ' 오늘의 도전',
+      head + ' ' + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' (' + fmtLong(totalTime()) + ')',
+      grid,
+      rank ? '🏆 오늘 ' + state.rank.total + '명 중 ' + rank.rank + '위' : '',
+      '',
+      '두 글자 단어 하나로 깃발까지 점프하는 한글 퍼즐이에요.',
+      '오늘 문제는 모두 같아요. 몇 단계까지 갈 수 있는지 겨뤄 봐요!',
+      '👉 https://jamojump.app',
+    ].filter((l, i, arr) => l !== '' || arr[i - 1] !== '').join('\n');
+  }
+
+  async function shareDaily(code) {
+    const text = shareText(code);
     try {
       if (navigator.share) { await navigator.share({ text }); return true; }
     } catch (e) {
       if (e && e.name === 'AbortError') return false;
     }
-    if (await copyText(text)) toast('결과를 복사했어요. 친구에게 붙여 넣어 주세요', 'ok');
+    if (await copyText(text)) toast(code ? '링크를 복사했어요. 친구에게 보내 주세요' : '결과를 복사했어요. 친구에게 붙여 넣어 주세요', 'ok');
     else toast('복사가 막혀 있어요. 화면을 캡처해 공유해 주세요');
     return true;
   }
@@ -1592,20 +1616,40 @@
   let routed = false;
   // ?r=코드 로 들어오면, 링크를 보낸 사람의 이어하기를 열어 준다.
   const inviteCode = new URLSearchParams(location.search).get('r');
+  let visitP = null;
   if (inviteCode) {
     history.replaceState(null, '', location.pathname);
-    if (Rank) {
-      Rank.call('visit', { code: inviteCode })
-        .then((r) => { if (r && r.ok && !r.already) setTimeout(() => toast(r.owner + '님의 이어하기를 열어 줬어요 🙌', 'ok'), 2300); })
-        .catch(() => {});
-    }
+    if (Rank) visitP = Rank.call('visit', { code: inviteCode }).catch(() => null);
   }
 
-  function route() {
+  function welcomeInvite(r) {
+    const first = !progress.tut;
+    state.introGo = first ? runTutorial : openDaily;
+    $('#intro-list').hidden = true;
+    $('#intro-badge').className = 'intro-badge';
+    $('#intro-badge').textContent = '친구가 보낸 링크';
+    if (r.reason === 'self') {
+      $('#intro-title').textContent = '내가 보낸 링크예요';
+      $('#intro-sub').textContent = '이어하기는 다른 친구가 이 링크를 열어야 열려요. 친구에게 보내 주세요.';
+      $('#intro-go').textContent = '오늘의 도전으로';
+      state.introGo = openDaily;
+    } else {
+      $('#intro-title').textContent = r.already ? '이미 열린 이어하기예요' : '이어하기를 열어 줬어요 🙌';
+      const who = '<b>' + esc(r.owner || '친구') + '</b>님';
+      $('#intro-sub').innerHTML = (r.already ? who + '은 벌써 이어서 하고 있어요.' : '덕분에 ' + who + '이 멈춘 단계부터 다시 도전할 수 있어요.') +
+        '<br>두 글자 단어로 말을 깃발까지 옮기는 한글 퍼즐이에요. 오늘 문제는 모두 같으니 같이 풀어 봐요!';
+      $('#intro-go').textContent = first ? '어떻게 하는지 보기' : '나도 오늘의 도전 하기';
+    }
+    openSheet('#intro', true);
+  }
+
+  async function route() {
     if (routed) return;
     routed = true;
+    const r = visitP ? await Promise.race([visitP, sleep(4000).then(() => null)]) : null;
+    openHome();
+    if (r && (r.ok || r.reason === 'self')) { welcomeInvite(r); return; }
     if (!progress.tut) runTutorial();
-    else openHome();
   }
 
   $('#splash').addEventListener('click', route);
