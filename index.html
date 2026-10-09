@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=24" />
+  <link rel="stylesheet" href="style.css?v=26" />
 </head>
 <body>
   <div id="app">
@@ -100,6 +100,23 @@
       <div id="tower-wrap" class="tower-wrap"><div id="tower" class="tower"></div></div>
       <footer class="map-foot">
         <button id="map-play" class="play-btn" type="button"></button>
+      </footer>
+    </section>
+
+    <section id="tour" class="screen" aria-label="게임 설명">
+      <header class="tour-top">
+        <div id="tour-bar" class="tour-bar" aria-hidden="true"></div>
+        <button id="tour-skip" class="pill-btn plain" type="button">건너뛰기</button>
+      </header>
+      <div id="tour-board" class="board-host tour-board"></div>
+      <div id="tour-vis" class="tour-vis" aria-hidden="true"></div>
+      <p id="tour-cap" class="tour-cap" aria-live="polite"></p>
+      <footer class="tour-foot">
+        <p id="tour-hint" class="tour-hint">화면을 누르면 다음으로 넘어가요</p>
+        <div id="tour-end" class="tour-end" hidden>
+          <button id="tour-start" class="btn-primary wide" type="button">시작하기</button>
+          <button id="tour-replay" class="btn-text" type="button">다시 보기</button>
+        </div>
       </footer>
     </section>
 
@@ -222,14 +239,14 @@
     <div class="sheet-actions"><button id="rank-close" class="btn-text" type="button">닫기</button></div>
   </section>
 
-  <script src="words.js?v=24"></script>
-  <script src="fam.js?v=24"></script>
-  <script src="engine.js?v=24"></script>
-  <script src="gen.js?v=24"></script>
-  <script src="daily.js?v=24"></script>
-  <script src="bosses.js?v=24"></script>
-  <script src="keypad.js?v=24"></script>
-  <script src="rank.js?v=24"></script>
-  <script src="app.js?v=24"></script>
+  <script src="words.js?v=26"></script>
+  <script src="fam.js?v=26"></script>
+  <script src="engine.js?v=26"></script>
+  <script src="gen.js?v=26"></script>
+  <script src="daily.js?v=26"></script>
+  <script src="bosses.js?v=26"></script>
+  <script src="keypad.js?v=26"></script>
+  <script src="rank.js?v=26"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>
