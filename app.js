@@ -84,10 +84,13 @@
   }
 
   // 칸 크기: 평소엔 화면 폭에 맞추고, 키패드가 올라와 있으면 남은 높이 안에 판 전체가 들어오게 더 줄인다.
-  function sizeBoard(host) {
+  // availH를 주면 그 높이를 기준으로 미리 계산한다(키패드가 올라오는 동안 판이 함께 줄어들게).
+  function sizeBoard(host, availH) {
     const byWidth = 'calc((min(100vw, 520px) - 40px) / ' + host.dataset.span + ')';
     let cap = '80px';
-    if (document.body.classList.contains('kb') && host.clientHeight) cap = Math.max(26, Math.floor((host.clientHeight - 14) / Number(host.dataset.tall))) + 'px';
+    const cs = getComputedStyle(host);
+    const h = (availH != null ? availH : host.clientHeight) - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    if (host.clientHeight && h > 0) cap = Math.max(26, Math.min(80, Math.floor((h - 8) / Number(host.dataset.tall)))) + 'px';
     host.style.setProperty('--cell', 'min(' + cap + ', ' + byWidth + ')');
   }
 
@@ -204,6 +207,7 @@
 
   /* ---------- 공통 UI ---------- */
   function show(id) {
+    if (id !== 'play' && state.closeKeypad) state.closeKeypad();
     document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('active', s.id === id));
     window.scrollTo(0, 0);
   }
@@ -1398,6 +1402,96 @@
   $('#btn-hint').addEventListener('click', onHint);
   $('#dock').addEventListener('submit', onSubmit);
   $('#answer').addEventListener('input', renderAbilities);
+
+  /* ---------- 게임 안 한글 키패드 (터치 기기) ---------- */
+  // 시스템 키패드는 Safari의 주소 줄·확인 줄이 붙고 화면이 밀려서, 휴대폰에서는 직접 만든 키패드를 쓴다.
+  const KP = window.JamoKeypad;
+  const useKeypad = !!KP && matchMedia('(pointer: coarse)').matches;
+  const kp = { keys: [], shift: false, open: false };
+
+  function buildKeypad() {
+    const label = { shift: '⇧', back: '⌫' };
+    const rows = KP.ROWS.map((row, i) => '<div class="kp-row r' + i + '">' + row.map((k) =>
+      '<button type="button" class="kp-key' + (KP.isVowel(k) ? ' v' : '') + (label[k] ? ' fn ' + k : '') + '" data-k="' + k + '">' + (label[k] || k) + '</button>').join('') + '</div>');
+    rows.push('<div class="kp-row r3"><button type="button" class="kp-key fn close" data-k="close" aria-label="키패드 닫기"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>' +
+      '<button type="button" class="kp-key fn go" data-k="go">점프<svg viewBox="0 0 24 24"><path d="M5 12h12M12 6l6 6-6 6"/></svg></button></div>');
+    $('#keypad').innerHTML = rows.join('');
+  }
+
+  function renderShift() {
+    $('#keypad').classList.toggle('shifted', kp.shift);
+    $('#keypad').querySelectorAll('.kp-key[data-k]').forEach((b) => {
+      const k = b.dataset.k;
+      if (KP.SHIFT[k]) b.textContent = kp.shift ? KP.SHIFT[k] : k;
+    });
+  }
+
+  function pressKey(k) {
+    const input = $('#answer');
+    if (k === 'close') { closeKeypad(); return; }
+    if (k === 'go') { if (!input.disabled) onSubmit({ preventDefault() {} }); return; }
+    if (input.disabled) return;
+    if (KP.compose(kp.keys) !== input.value) kp.keys = KP.toKeys(input.value); // 힌트·튜토리얼이 값을 바꾼 경우
+    if (k === 'shift') { kp.shift = !kp.shift; renderShift(); return; }
+    let next;
+    if (k === 'back') next = kp.keys.slice(0, -1);
+    else next = kp.keys.concat(kp.shift && KP.SHIFT[k] ? KP.SHIFT[k] : k);
+    const text = KP.compose(next);
+    if ([...text].length > 2) { shakeField(); return; }
+    kp.keys = next;
+    input.value = text;
+    if (kp.shift && k !== 'back') { kp.shift = false; renderShift(); }
+    renderAbilities();
+  }
+
+  // 키패드가 올라오는 높이만큼 판이 들어갈 자리를 미리 계산해, 판 크기가 같은 시간 동안 함께 줄어들게 한다.
+  function setKeypad(open) {
+    if (!useKeypad || kp.open === open) return;
+    kp.open = open;
+    const wrap = $('#kp-wrap');
+    const host = $('#board');
+    const kh = $('#keypad').scrollHeight;
+    if (host.dataset.span) {
+      host.classList.add('anim');
+      sizeBoard(host, host.clientHeight + (open ? -kh : kh));
+      clearTimeout(kp.animT);
+      kp.animT = setTimeout(() => { host.classList.remove('anim'); sizeBoard(host); }, 340);
+    }
+    wrap.style.maxHeight = open ? kh + 'px' : '0px';
+    wrap.setAttribute('aria-hidden', String(!open));
+    document.body.classList.toggle('kp', open);
+    $('#field').classList.toggle('active', open);
+  }
+  const openKeypad = () => { if (!$('#answer').disabled) setKeypad(true); };
+  const closeKeypad = () => setKeypad(false);
+  state.closeKeypad = closeKeypad;
+
+  if (useKeypad) {
+    buildKeypad();
+    const input = $('#answer');
+    input.readOnly = true;
+    input.inputMode = 'none';
+    input.tabIndex = -1;
+    $('#field').addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#btn-submit')) return;
+      e.preventDefault();
+      openKeypad();
+    });
+    $('#board').addEventListener('click', closeKeypad);
+    const pad = $('#keypad');
+    pad.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest('.kp-key');
+      if (!b) return;
+      e.preventDefault();
+      b.classList.add('down');
+      pressKey(b.dataset.k);
+    });
+    const up = (e) => { const b = e.target.closest && e.target.closest('.kp-key'); if (b) b.classList.remove('down'); };
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => pad.addEventListener(t, up));
+    pad.addEventListener('pointerout', up);
+    window.addEventListener('resize', () => { const h = $('#board'); if (h.dataset.span && !h.classList.contains('anim')) sizeBoard(h); });
+  }
+
 
   // 키패드가 올라오면(보이는 영역이 크게 줄면) 헤더를 숨기고, 놀이 화면을 보이는 영역에 딱 맞춰 고정한다.
   // iOS는 키패드가 열리면 페이지 전체를 밀어 올리기 때문에, 보이는 영역의 위치(offsetTop)를 따라간다.

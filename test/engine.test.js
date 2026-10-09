@@ -213,3 +213,16 @@ test('랭킹 서버용 game.js가 지금 게임 코드와 같다 (바꿨으면 n
   require('child_process').execFileSync('node', [path.join(__dirname, '../scripts/build-edge.js')]);
   assert.equal(fs.readFileSync(file, 'utf8'), before);
 });
+
+test('게임 키패드: 두벌식 조합 (겹모음·겹받침·받침 넘어가기)', () => {
+  const K = require('../keypad.js');
+  const t = (s) => K.compose([...s]);
+  assert.equal(t('ㄱㅠㅊㅣㄱ'), '규칙');
+  assert.equal(t('ㅇㅏㅁㅌㅏㄹㄱ'), '암탉');
+  assert.equal(t('ㅇㅠㄱㅗㅏㅇ'), '유광');
+  assert.equal(t('ㄷㅏㄹㄱㅏ'), '달가');
+  assert.equal(t('ㅇㅡㅣㅅㅏ'), '의사');
+  assert.equal(t('ㄲㅗㄱ'), '꼭');
+  for (const w of ['규칙', '닭', '값', '삶', '왜', '쥐', '의사']) assert.equal(K.compose(K.toKeys(w)), w);
+});
+

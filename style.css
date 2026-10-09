@@ -208,7 +208,9 @@ b { font-weight: 800; }
   place-items: center;
   perspective: 1000px;
 }
-#board { flex: 1; padding: 18px 0 26px; min-height: 250px; }
+#board { flex: 1 1 0; padding: 18px 0 22px; min-height: 0; }
+/* 놀이 화면은 화면 높이에 딱 맞추고, 판은 남은 높이에 맞춰 칸 크기를 정한다(app.js sizeBoard) */
+#play.active { height: 100vh; height: 100dvh; min-height: 0; }
 .mat {
   padding: calc(var(--cell) * .3);
   border-radius: calc(var(--cell) * .36);
@@ -327,8 +329,8 @@ b { font-weight: 800; }
 /* 입력창과 점프 버튼을 한 덩어리로: 두 글자를 다 쓰면 버튼이 민트로 켜진다 */
 .field {
   display: flex; align-items: center; gap: 6px;
-  padding: 5px;
-  border-radius: 20px;
+  padding: 4px;
+  border-radius: 18px;
   background: var(--ink);
   border: 1.5px solid #2A2C34;
   transition: border-color .2s, box-shadow .2s;
@@ -337,8 +339,8 @@ b { font-weight: 800; }
 #answer {
   flex: 1;
   min-width: 0;
-  height: 50px;
-  padding: 0 0 0 calc(50px + .4em); /* 오른쪽 버튼만큼 왼쪽도 비워 글자가 가운데 오게 */
+  height: 44px;
+  padding: 0 0 0 calc(44px + .4em); /* 오른쪽 버튼만큼 왼쪽도 비워 글자가 가운데 오게 */
   border: 0;
   border-radius: 14px;
   background: transparent;
@@ -346,7 +348,7 @@ b { font-weight: 800; }
   color: var(--text);
   caret-color: var(--mint);
   font-family: var(--display);
-  font-size: 28px;
+  font-size: 26px;
   letter-spacing: .4em;
   text-align: center;
 }
@@ -355,9 +357,9 @@ b { font-weight: 800; }
 #answer:disabled { opacity: .45; }
 #btn-submit {
   flex: none;
-  width: 50px; height: 50px; min-width: 50px;
+  width: 44px; height: 44px; min-width: 44px;
   padding: 0;
-  border-radius: 14px;
+  border-radius: 13px;
   background: var(--tile);
   color: var(--muted);
   box-shadow: none;
@@ -809,4 +811,40 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 .waiting { color: var(--soft); font-weight: 700; }
 .waiting::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: dots 1.4s steps(4) infinite; }
 @keyframes dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; } }
+
+
+/* ---------- 게임 안 한글 키패드 ---------- */
+@property --cell { syntax: '<length>'; inherits: true; initial-value: 64px; }
+.board-host.anim { transition: --cell .32s cubic-bezier(.2, .8, .2, 1); }
+.board-host.anim .pawn { transition: none; }
+.field.active { border-color: rgba(61, 220, 151, .55); box-shadow: 0 0 0 4px rgba(61, 220, 151, .08); }
+#answer[readonly] { cursor: pointer; -webkit-user-select: none; user-select: none; }
+.kp-wrap { max-height: 0; overflow: hidden; transition: max-height .32s cubic-bezier(.2, .8, .2, 1); }
+.keypad {
+  display: grid; gap: 7px;
+  padding-top: 12px;
+  -webkit-user-select: none; user-select: none;
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+}
+.kp-row { display: grid; grid-template-columns: repeat(20, 1fr); gap: 5px; }
+.kp-key {
+  grid-column: span 2;
+  height: 44px;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  font-family: var(--display); font-size: 20px; line-height: 1; color: var(--text);
+  background: linear-gradient(180deg, #3A3D48, #30323B);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 0 #0A0B0E;
+  transition: transform .06s, background .06s;
+}
+.kp-key.v { color: #CDBBFF; }
+.kp-key.down { transform: translateY(2px); background: #4A4E5A; box-shadow: none; }
+.kp-row.r1 .kp-key:first-child { grid-column: 2 / span 2; }
+.kp-key.fn { grid-column: span 3; font-family: var(--body); font-size: 20px; color: var(--soft); background: linear-gradient(180deg, #26282F, #202228); }
+.keypad.shifted .kp-key.shift { color: var(--ink); background: var(--text); }
+.kp-key.close { grid-column: span 5; }
+.kp-key.close svg, .kp-key.go svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.kp-key.go { grid-column: span 15; display: flex; justify-content: center; gap: 6px; font-size: 16px; font-weight: 800; color: var(--muted); }
+.field.ready ~ * .kp-key.go, body.kp .bottom:has(.field.ready) .kp-key.go { color: var(--ink); background: var(--mint); }
 
