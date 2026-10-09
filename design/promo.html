@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=540" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=block" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<link rel="stylesheet" href="../style.css" />
+<style>
+  html, body { width: 540px; height: 960px; overflow: hidden; }
+  body { min-height: 0; background: radial-gradient(120% 45% at 50% -8%, rgba(150, 30, 42, .45), transparent 62%), radial-gradient(90% 40% at 50% 108%, rgba(155, 107, 255, .16), transparent 60%), #0F1014; }
+  #v { position: relative; width: 540px; height: 960px; overflow: hidden; }
+  .layer { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; opacity: 0; transition: opacity .45s ease; pointer-events: none; }
+  .layer.on { opacity: 1; }
+  .hook { text-align: center; font-family: var(--display); font-size: 46px; line-height: 1.32; }
+  .hook b { color: var(--gold); font-weight: 400; }
+  .o { color: var(--orange); } .p { color: var(--purple-text); } .m { color: var(--mint); } .c { color: var(--coral); }
+  .big-logo { display: flex; gap: 12px; position: relative; }
+  .big-logo i { width: 104px; height: 104px; display: grid; place-items: center; border-radius: 26px; font-style: normal; font-family: var(--display); font-size: 58px; background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 11px 0 var(--side), 0 20px 28px rgba(0,0,0,.55); opacity: 0; }
+  .on .big-logo i { animation: drop .6s cubic-bezier(.2,.9,.3,1.3) both; }
+  .big-logo i:nth-child(1) { box-shadow: inset 0 0 0 5px var(--mint), 0 11px 0 var(--side), 0 20px 28px rgba(0,0,0,.55); }
+  .on .big-logo i:nth-child(2) { animation-delay: .1s; } .on .big-logo i:nth-child(3) { animation-delay: .2s; color: var(--orange); } .on .big-logo i:nth-child(4) { animation-delay: .3s; color: var(--purple-text); }
+  .big-logo .pawn2 { position: absolute; left: 32px; top: -36px; width: 40px; height: 40px; border-radius: 50%; background: radial-gradient(circle at 34% 30%, #FFF6D8 0 14%, var(--gold) 15% 58%, #D99A1E 100%); box-shadow: 0 8px 12px rgba(0,0,0,.55); opacity: 0; }
+  .on .big-logo .pawn2 { animation: bigHop 2.2s .6s cubic-bezier(.45,0,.55,1) both; }
+  @keyframes bigHop { 0% { transform: translate(0,-40px); opacity: 0 } 12% { transform: translate(0,0); opacity: 1 } 26% { transform: translate(58px,-40px) } 38% { transform: translate(116px,0) } 52% { transform: translate(174px,-40px) } 64% { transform: translate(232px,0) } 78% { transform: translate(290px,-40px) } 90%,100% { transform: translate(348px,0) } }
+  .cap { position: absolute; left: 30px; right: 30px; text-align: center; font-family: var(--display); font-size: 36px; line-height: 1.4; }
+  .cap b { color: var(--gold); font-weight: 400; }
+  .cap.in { animation: capIn .45s cubic-bezier(.2,.85,.2,1); }
+  .host { position: absolute; left: 0; right: 0; display: grid; place-items: center; perspective: 1000px; --g: .14; }
+  .slots2 { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 14px; }
+  .slots2 i { width: 84px; height: 84px; display: grid; place-items: center; border-radius: 20px; font-style: normal; font-family: var(--display); font-size: 44px; color: var(--muted); background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 8px 0 var(--side); transition: box-shadow .3s, color .3s, transform .3s; }
+  .slots2 i.on { color: var(--text); }
+  .slots2 i.or { box-shadow: inset 0 0 0 4px var(--orange), 0 8px 0 var(--side), 0 0 30px rgba(255,138,61,.35); transform: translateY(-6px); }
+  .slots2 i.pr { box-shadow: inset 0 0 0 4px var(--purple), 0 8px 0 var(--side), 0 0 30px rgba(155,107,255,.4); transform: translateY(-6px); }
+  .ff { position: absolute; left: 70px; right: 70px; height: 78px; display: flex; align-items: center; justify-content: center; gap: 4px; border-radius: 22px; background: #0B0C10; border: 2px solid rgba(61,220,151,.55); box-shadow: 0 0 0 6px rgba(61,220,151,.08); }
+  .ff .t { font-family: var(--display); font-size: 40px; letter-spacing: .3em; }
+  .ff .k { width: 3px; height: 40px; background: var(--mint); animation: blink 1s steps(2) infinite; }
+  .ok { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 64px; color: var(--mint); text-shadow: 0 0 30px rgba(61,220,151,.5); }
+  .ok.in { animation: pop .5s cubic-bezier(.2,.9,.3,1.5) both; }
+  .cards { position: absolute; top: 290px; left: 30px; right: 30px; display: grid; gap: 22px; }
+  .card2 { padding: 26px 28px; border-radius: 28px; background: #17181D; border: 1.5px solid var(--line); display: grid; gap: 14px; opacity: 0; transform: translateY(24px); transition: opacity .5s, transform .6s cubic-bezier(.2,.9,.3,1.2); }
+  .card2.in { opacity: 1; transform: none; }
+  .card2 h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 40px; }
+  .card2 p { margin: 0; font-size: 26px; font-weight: 600; color: var(--soft); line-height: 1.5; }
+  .row2 { display: flex; align-items: center; gap: 12px; }
+  .row2 .w { width: 74px; height: 74px; display: grid; place-items: center; border-radius: 18px; font-family: var(--display); font-size: 40px; background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%); box-shadow: 0 7px 0 var(--side); }
+  .row2 .eq { font-size: 30px; color: var(--dim); }
+  .row2 .pc { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 14px; font-family: var(--display); font-size: 30px; background: #0B0C10; border: 2px solid var(--line); }
+  .row2 .pc.c { color: var(--orange); border-color: var(--orange); box-shadow: 0 0 18px rgba(255,138,61,.3); }
+  .row2 .vg { width: 40px; height: 40px; vertical-align: 0; }
+  .row2 .pc .vg .pr, .vbig2 .vg .pr { animation: strokePulse 1.1s ease-in-out infinite; }
+  .vbig2 { width: 74px; height: 74px; display: grid; place-items: center; border-radius: 18px; background: #0B0C10; border: 2px solid var(--line); }
+  .vbig2 .vg { width: 52px; height: 52px; vertical-align: 0; }
+  .arr { font-family: var(--display); font-size: 34px; color: var(--purple-text); }
+  .chip2 { position: absolute; left: 0; right: 0; display: flex; justify-content: center; }
+  .chip2 span { padding: 10px 20px; border-radius: 999px; font-size: 22px; font-weight: 800; color: var(--purple-text); background: rgba(155,107,255,.12); border: 1.5px solid rgba(155,107,255,.4); }
+  .boss { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 30px; color: var(--coral); letter-spacing: .04em; }
+  .cta-logo { display: flex; gap: 10px; margin-top: 290px; }
+  .cta-logo i { width: 86px; height: 86px; display: grid; place-items: center; border-radius: 22px; font-style: normal; font-family: var(--display); font-size: 48px; background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 9px 0 var(--side); }
+  .cta-logo i:nth-child(1) { box-shadow: inset 0 0 0 4px var(--mint), 0 9px 0 var(--side); }
+  .cta-logo i:nth-child(3) { color: var(--orange); } .cta-logo i:nth-child(4) { color: var(--purple-text); }
+  .on .cta-logo i { animation: pop .5s cubic-bezier(.2,.9,.3,1.4) both; }
+  .on .cta-logo i:nth-child(2) { animation-delay: .08s; } .on .cta-logo i:nth-child(3) { animation-delay: .16s; } .on .cta-logo i:nth-child(4) { animation-delay: .24s; }
+  .cta-t { margin-top: 56px; text-align: center; font-family: var(--display); font-size: 42px; line-height: 1.35; }
+  .cta-t b { color: var(--gold); font-weight: 400; }
+  .url { margin-top: 44px; padding: 20px 40px; border-radius: 999px; font-size: 36px; font-weight: 900; letter-spacing: .01em; color: var(--ink); background: var(--text); box-shadow: 0 10px 40px rgba(242,243,247,.15); }
+  .on .url { animation: pop .5s .5s cubic-bezier(.2,.9,.3,1.4) both; }
+  .credit { position: absolute; bottom: 150px; left: 0; right: 0; text-align: center; font-size: 18px; font-weight: 600; color: var(--dim); }
+  .host .tile.wave .flag svg { transform-origin: 25% 90%; animation: flagWave .9s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="v">
+  <section class="layer" id="L1">
+    <div class="big-logo" style="margin-top:250px"><i>자</i><i>모</i><i>점</i><i>프</i><b class="pawn2"></b></div>
+    <p class="hook" style="margin-top:90px">두 글자 단어 하나로<br><b>깃발까지</b> 갈 수 있을까?</p>
+  </section>
+  <section class="layer" id="L2">
+    <p class="cap" id="cap2" style="top:130px"></p>
+    <div class="host demo" id="h2" style="top:290px;height:430px"></div>
+    <div class="slots2" id="sl2" style="top:745px"><i>?</i><i>?</i></div>
+    <div class="ff" id="ff2" style="top:745px;display:none"><span class="t"></span><i class="k"></i></div>
+    <div class="ok" id="ok2" style="top:180px;display:none">정답!</div>
+  </section>
+  <section class="layer" id="L3">
+    <p class="cap" style="top:170px">규칙은 <b>딱 두 가지</b></p>
+    <div class="cards">
+      <div class="card2" id="cA"><h3 class="o">자음 점프</h3>
+        <div class="row2"><span class="w">금</span><span class="eq">=</span><span class="pc c">ㄱ</span><span class="pc" id="cAv"></span><span class="pc c">ㅁ</span></div>
+        <p>한 글자 안의 <b class="o">다른 자음 칸</b>으로 건너뛰기</p></div>
+      <div class="card2" id="cB"><h3 class="p">모음 점프</h3>
+        <div class="row2"><span class="vbig2" id="vA"></span><span class="arr">→1</span><span style="width:18px"></span><span class="vbig2" id="vB"></span><span class="arr">↓2</span></div>
+        <p>모음 획이 <b class="p">튀어나온 쪽</b>으로, 획 수만큼</p></div>
+    </div>
+  </section>
+  <section class="layer" id="L4">
+    <p class="boss" style="top:190px">BOSS · 외길</p>
+    <p class="cap" id="cap4" style="top:240px">칸이 한 줄뿐이라면?</p>
+    <div class="chip2" style="top:385px"><span>모음 점프만</span></div>
+    <div class="host demo" id="h4" style="top:460px;height:200px"></div>
+    <div class="slots2" id="sl4" style="top:705px"><i class="on">암</i><i class="on">탉</i></div>
+  </section>
+  <section class="layer" id="L5">
+    <div class="cta-logo"><i>자</i><i>모</i><i>점</i><i>프</i></div>
+    <p class="cta-t">매일 새로 열리는<br><b>20단계 한글 퍼즐</b></p>
+    <div class="url">jamojump.app</div>
+    <p class="credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요</p>
+  </section>
+</div>
+<script src="../engine.js"></script>
+<script src="promo-lib.js"></script>
+<script>
+(async () => {
+  const P = window.Promo;
+  const $ = (q) => document.querySelector(q);
+  const sleep = P.sleep;
+  const TB = (list, start, goal, rules) => ({ tiles: list.map(([x, y, c]) => ({ x, y, c })), start, goal, rules: rules || {} });
+  const show = (id) => document.querySelectorAll('.layer').forEach((l) => l.classList.toggle('on', l.id === id));
+  const cap = (el, html) => { el.classList.remove('in'); void el.offsetWidth; el.innerHTML = html; el.classList.add('in'); };
+  const st = (type, syllable, from, to) => ({ type, syllable, from, to });
+  await document.fonts.ready;
+  window.__ready = true;
+  while (!window.__go) await sleep(20);
+
+  // 1. 훅 (0 ~ 3.4s)
+  show('L1');
+  await sleep(3400);
+
+  // 2. 판과 질문, 입력, 풀이 (3.4 ~ 13.4s)
+  show('L2');
+  const B1 = TB([[0, 0, 'ㅇ'], [2, 0, 'ㄱ'], [1, 1, 'ㅁ'], [2, 1, null], [0, 2, 'ㅅ']], [0, 0], [2, 1]);
+  const h2 = $('#h2');
+  h2.style.setProperty('--cell', '112px');
+  const plane = P.drawBoard(h2, B1);
+  plane.classList.add('build');
+  plane.querySelectorAll('.tile, .void').forEach((t) => t.style.setProperty('--k', Number(t.style.getPropertyValue('--x')) + Number(t.style.getPropertyValue('--y'))));
+  const c2 = $('#cap2');
+  cap(c2, '<span class="m">초록 칸</span>의 말을 <span class="c">깃발</span>까지!<br>어떤 <b>두 글자 단어</b>로?');
+  await sleep(2400);
+  $('#sl2').style.display = 'none';
+  $('#ff2').style.display = 'flex';
+  const t = $('#ff2 .t');
+  await sleep(300);
+  t.textContent = '엄';
+  P.drawArrow(plane.querySelector('.g-preview'), [0, 0], [1, 1], P.ORANGE, { faint: true, label: '엄', animate: true });
+  await sleep(700);
+  t.textContent = '엄마';
+  P.drawArrow(plane.querySelector('.g-preview'), [1, 1], [2, 1], P.PURPLE, { faint: true, label: '마', animate: true });
+  await sleep(900);
+  plane.querySelector('.g-preview').innerHTML = '';
+  cap(c2, '<span class="o">엄</span> · ㅇ에서 ㅁ으로 <span class="o">자음 점프</span>');
+  await P.playStep(plane, st('consonant', '엄', [0, 0], [1, 1]));
+  await sleep(600);
+  cap(c2, '<span class="p">마</span> · ㅏ 방향으로 <span class="p">모음 점프</span>');
+  await P.playStep(plane, st('vowel', '마', [1, 1], [2, 1]));
+  P.tileAt(plane, [2, 1]).classList.add('wave');
+  c2.style.opacity = 0;
+  $('#ok2').innerHTML = '정답! <span style="color:var(--gold)">엄마</span>';
+  $('#ok2').style.display = 'block';
+  $('#ok2').classList.add('in');
+  $('#ff2').style.borderColor = 'var(--mint)';
+  await sleep(1900);
+
+  // 3. 규칙 두 가지 (13.4 ~ 18.6s)
+  show('L3');
+  $('#cAv').innerHTML = P.VG('ㅡ');
+  $('#vA').innerHTML = P.VG('ㅏ');
+  $('#vB').innerHTML = P.VG('ㅠ');
+  await sleep(500);
+  $('#cA').classList.add('in');
+  await sleep(1300);
+  $('#cB').classList.add('in');
+  await sleep(3400);
+
+  // 4. 보스 (18.6 ~ 24.4s)
+  show('L4');
+  const B2 = TB([[0, 0, 'ㅁ'], [1, 0, 'ㄹ'], [2, 0, 'ㄱ'], [3, 0, 'ㅌ'], [4, 0, 'ㅇ'], [5, 0, null]], [0, 0], [5, 0], { vowelOnly: true });
+  const h4 = $('#h4');
+  h4.style.setProperty('--cell', '68px');
+  const p4 = P.drawBoard(h4, B2);
+  p4.classList.add('build');
+  p4.querySelectorAll('.tile').forEach((t) => t.style.setProperty('--k', Number(t.style.getPropertyValue('--x'))));
+  await sleep(1400);
+  const c4 = $('#cap4');
+  cap(c4, '같은 글자를 <b>몇 번이든</b> 다시 써요');
+  const sl = $('#sl4').querySelectorAll('i');
+  const path = P.H.findPath(B2, '암탉');
+  for (const s of path) {
+    sl.forEach((x) => x.classList.remove('pr'));
+    sl[s.index].classList.add('pr');
+    await P.playStep(p4, s);
+  }
+  sl.forEach((x) => x.classList.remove('pr'));
+  P.tileAt(p4, [5, 0]).classList.add('wave');
+  cap(c4, '암 → 탉 → 탉 → 탉 → 암<br><b>암탉</b>, 깃발 도착!');
+  await sleep(1300);
+
+  // 5. CTA (24.4 ~ 28.4s)
+  show('L5');
+  await sleep(4000);
+  window.__done = true;
+})();
+</script>
+</body>
+</html>
+
