@@ -1,0 +1,18 @@
+{
+  "name": "자모 점프",
+  "short_name": "자모 점프",
+  "description": "두 글자 단어로 자음 점프, 모음 점프를 이어 깃발까지 가는 한글 퍼즐",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F1014",
+  "theme_color": "#0F1014",
+  "categories": ["games", "education"],
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

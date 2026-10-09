@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=block" />
+<style>
+  /* 512px 기준으로 그리고, 필요한 크기는 줄여서 저장한다. ?bleed=1 이면 마스커블용 여백을 둔다. */
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 512px; height: 512px; overflow: hidden; }
+  body {
+    display: grid; place-items: center;
+    background: radial-gradient(90% 70% at 50% 0%, rgba(150, 30, 42, .55), transparent 70%), #0F1014;
+  }
+  .wrap { position: relative; width: 300px; height: 300px; margin-top: 46px; }
+  body.bleed .wrap { transform: scale(.78); }
+  .tile {
+    width: 100%; height: 100%; display: grid; place-items: center; padding-top: 14px;
+    border-radius: 68px;
+    font-family: 'Black Han Sans', sans-serif; font-size: 190px; line-height: 1; color: #F2F3F7;
+    background: linear-gradient(180deg, #3A3D48, #2E3039 70%);
+    box-shadow: inset 0 0 0 13px #3DDC97, inset 0 2px 0 rgba(255, 255, 255, .12), 0 30px 0 #07080A, 0 44px 50px rgba(0, 0, 0, .6);
+  }
+  .pawn { position: absolute; left: 50%; top: -74px; width: 104px; height: 104px; margin-left: -52px; border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #FFF6D8 0 14%, #FFD166 15% 58%, #D99A1E 100%);
+    box-shadow: 0 16px 22px rgba(0, 0, 0, .6), inset 0 -9px 0 rgba(0, 0, 0, .18); }
+</style>
+</head>
+<body>
+  <div class="wrap"><div class="tile">자</div><span class="pawn"></span></div>
+  <script>if (location.search.includes('bleed')) document.body.classList.add('bleed');</script>
+</body>
+</html>

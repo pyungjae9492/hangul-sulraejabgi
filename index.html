@@ -4,20 +4,45 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0F1014" />
-  <meta name="description" content="두 글자 단어로 자음과 모음을 타고 점프해서 20개 스테이지를 올라가는 한글 퍼즐." />
-  <meta property="og:title" content="자모 점프" />
-  <meta property="og:description" content="두 글자 단어로 자음과 모음을 타고 점프해서 깃발까지." />
-  <meta property="og:url" content="https://jamojump.app/" />
-  <meta property="og:type" content="website" />
-  <link rel="canonical" href="https://jamojump.app/" />
   <script>if (/github\.io$/.test(location.hostname)) location.replace('https://jamojump.app/' + location.search + location.hash);</script>
-  <title>자모 점프</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='52' rx='12' fill='%232E3039'/%3E%3Crect x='4' y='50' width='56' height='10' rx='5' fill='%230A0B0E'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%23F2F3F7' font-family='sans-serif' font-weight='900'%3E%E3%84%B1%3C/text%3E%3C/svg%3E" />
+  <title>자모 점프 - 두 글자로 깃발까지 가는 한글 퍼즐</title>
+  <meta name="description" content="두 글자 단어 하나로 자음 점프와 모음 점프를 이어 깃발 칸까지 가는 한글 퍼즐. 매일 20단계 오늘의 도전과 끝없이 푸는 무한 모드." />
+  <meta name="keywords" content="자모 점프, 한글 퍼즐, 단어 게임, 한글 게임, 네 가지 소원, 숨바꼭질, 두 글자 단어" />
+  <link rel="canonical" href="https://jamojump.app/" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="자모 점프" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:url" content="https://jamojump.app/" />
+  <meta property="og:title" content="자모 점프 - 두 글자로 깃발까지" />
+  <meta property="og:description" content="자음 점프, 모음 점프로 푸는 한글 퍼즐. 오늘의 20단계에 도전해 보세요." />
+  <meta property="og:image" content="https://jamojump.app/assets/og.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="자모 점프 로고와, 초록 출발 칸에서 칙·규 두 번 점프해 깃발 칸에 닿는 게임판" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="자모 점프 - 두 글자로 깃발까지" />
+  <meta name="twitter:description" content="자음 점프, 모음 점프로 푸는 한글 퍼즐. 오늘의 20단계에 도전해 보세요." />
+  <meta name="twitter:image" content="https://jamojump.app/assets/og.png" />
+  <meta name="twitter:image:alt" content="자모 점프 게임판 미리보기" />
+
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-title" content="자모 점프" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"VideoGame","name":"자모 점프","url":"https://jamojump.app/","image":"https://jamojump.app/assets/og.png","description":"두 글자 단어 하나로 자음 점프와 모음 점프를 이어 깃발 칸까지 가는 한글 퍼즐.","inLanguage":"ko","genre":["Puzzle","Word game"],"gamePlatform":"Web browser","applicationCategory":"Game","operatingSystem":"Any","offers":{"@type":"Offer","price":"0","priceCurrency":"KRW"},"author":{"@type":"Person","name":"pyungjae9492"}}
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body>
   <div id="app">
@@ -149,11 +174,11 @@
     </div>
   </section>
 
-  <script src="words.js?v=13"></script>
-  <script src="fam.js?v=13"></script>
-  <script src="engine.js?v=13"></script>
-  <script src="gen.js?v=13"></script>
-  <script src="bosses.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="words.js?v=14"></script>
+  <script src="fam.js?v=14"></script>
+  <script src="engine.js?v=14"></script>
+  <script src="gen.js?v=14"></script>
+  <script src="bosses.js?v=14"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=block" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
+<style>
+  :root {
+    --ink: #0F1014; --tile: #2E3039; --tile-hi: #3A3D48; --side: #0A0B0E;
+    --text: #F2F3F7; --muted: #8A8E9A; --orange: #FF8A3D; --purple: #9B6BFF; --purple-text: #B79BFF;
+    --mint: #3DDC97; --coral: #FF5A5F; --gold: #FFD166;
+    --display: 'Black Han Sans', sans-serif; --body: 'Pretendard Variable', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    position: relative;
+    color: var(--text);
+    font-family: var(--body);
+    -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(70% 90% at 82% 40%, rgba(155, 107, 255, .16), transparent 60%),
+      radial-gradient(80% 70% at 10% -10%, rgba(150, 30, 42, .45), transparent 62%),
+      var(--ink);
+  }
+  body::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1.4px);
+    background-size: 26px 26px;
+    mask-image: linear-gradient(90deg, transparent 0 45%, #000 85%);
+  }
+  .left { position: absolute; left: 84px; top: 0; bottom: 0; width: 600px; display: flex; flex-direction: column; justify-content: center; }
+  .logo { display: flex; gap: 14px; margin-bottom: 48px; }
+  .logo i {
+    font-style: normal; font-family: var(--display); font-size: 70px; line-height: 1;
+    width: 118px; height: 118px; display: grid; place-items: center; padding-top: 6px;
+    border-radius: 26px;
+    background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 12px 0 var(--side), 0 22px 30px rgba(0, 0, 0, .55);
+  }
+  .logo i:nth-child(1) { box-shadow: inset 0 0 0 5px var(--mint), inset 0 1px 0 rgba(255, 255, 255, .1), 0 12px 0 var(--side), 0 22px 30px rgba(0, 0, 0, .55); }
+  .logo i:nth-child(3) { color: var(--orange); }
+  .logo i:nth-child(4) { color: var(--purple-text); }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 64px; line-height: 1.12; letter-spacing: -.5px; }
+  h1 em { font-style: normal; color: var(--gold); }
+  .sub { margin-top: 20px; font-size: 27px; font-weight: 600; color: #C9CBD3; letter-spacing: -.3px; }
+  .sub b { font-weight: 800; }
+  .sub .o { color: var(--orange); }
+  .sub .p { color: var(--purple-text); }
+  .url { position: absolute; left: 84px; bottom: 46px; font-size: 22px; font-weight: 700; color: var(--muted); letter-spacing: .2px; }
+
+  .stage { position: absolute; right: 70px; top: 0; bottom: 0; width: 420px; display: grid; place-items: center; perspective: 1100px; }
+  .mat {
+    --cell: 108px; --g: .16;
+    padding: 34px; border-radius: 40px;
+    background: linear-gradient(180deg, #1C1D24, #141519);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 40px 70px -18px rgba(0, 0, 0, .85);
+    transform: rotateX(20deg) rotateZ(-4deg);
+    transform-origin: 50% 60%;
+  }
+  .plane { position: relative; width: calc(2 * var(--cell) * (1 + var(--g)) - var(--cell) * var(--g)); height: calc(4 * var(--cell) * (1 + var(--g)) - var(--cell) * var(--g)); }
+  .t, .v { position: absolute; left: calc(var(--x) * var(--cell) * (1 + var(--g))); top: calc(var(--y) * var(--cell) * (1 + var(--g))); width: var(--cell); height: var(--cell); }
+  .v::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; border-radius: 50%; background: #2A2C34; }
+  .t {
+    --ring: 0 0 0 0 transparent;
+    display: grid; place-items: center; border-radius: 22px;
+    font-family: var(--display); font-size: 52px; padding-top: 4px;
+    background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%);
+    box-shadow: var(--ring), inset 0 1px 0 rgba(255, 255, 255, .1), 0 14px 0 var(--side), 0 24px 30px rgba(0, 0, 0, .55);
+  }
+  .t.start { --ring: inset 0 0 0 5px var(--mint); }
+  .t.goal { --ring: inset 0 0 0 5px var(--coral), 0 0 46px 2px rgba(255, 90, 95, .35); background: linear-gradient(180deg, #43292E, #321F23 70%); color: var(--coral); padding: 0; }
+  .t.goal svg { width: 48%; }
+  .t.dim { opacity: .55; }
+  .lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 2; }
+  .lines text { font-family: var(--display); font-size: 42px; paint-order: stroke; stroke: #15161B; stroke-width: 12px; stroke-linejoin: round; }
+  .pawn { position: absolute; z-index: 3; width: 44px; height: 44px; left: calc(var(--cell) / 2 - 22px); top: -30px; border-radius: 50%;
+    background: radial-gradient(circle at 34% 30%, #FFF6D8 0 14%, var(--gold) 15% 58%, #D99A1E 100%);
+    box-shadow: 0 9px 14px rgba(0, 0, 0, .6), inset 0 -4px 0 rgba(0, 0, 0, .18); }
+</style>
+</head>
+<body>
+  <div class="left">
+    <div class="logo"><i>자</i><i>모</i><i>점</i><i>프</i></div>
+    <h1>두 글자 단어로<br /><em>깃발</em>까지 점프!</h1>
+    <p class="sub"><b class="o">자음 점프</b>와 <b class="p">모음 점프</b>로 푸는 한글 퍼즐</p>
+  </div>
+  <p class="url">jamojump.app</p>
+
+  <div class="stage">
+    <div class="mat">
+      <div class="plane">
+        <div class="t start" style="--x:0;--y:0">ㅊ</div>
+        <div class="v" style="--x:1;--y:0"></div>
+        <div class="v" style="--x:0;--y:1"></div>
+        <div class="t" style="--x:1;--y:1">ㄱ</div>
+        <div class="t dim" style="--x:0;--y:2">ㅇ</div>
+        <div class="v" style="--x:1;--y:2"></div>
+        <div class="v" style="--x:0;--y:3"></div>
+        <div class="t goal" style="--x:1;--y:3"><svg viewBox="0 0 24 24"><path d="M6 21V4h11l-2.5 4L17 12H6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span class="pawn"></span>
+        <svg class="lines" viewBox="0 0 233.28 489.7">
+          <!-- 셀 중심: (54,54) (179.28,179.28) (179.28,429.84) -->
+          <line x1="76" y1="76" x2="150" y2="150" stroke="#FF8A3D" stroke-width="9" stroke-linecap="round" />
+          <polygon points="166,166 136,158 158,136" fill="#FF8A3D" />
+          <text x="76" y="150" fill="#FF8A3D" text-anchor="middle" dominant-baseline="central">칙</text>
+          <line x1="179.28" y1="216" x2="179.28" y2="380" stroke="#9B6BFF" stroke-width="9" stroke-linecap="round" />
+          <polygon points="179.28,400 163,372 195.5,372" fill="#9B6BFF" />
+          <text x="128" y="305" fill="#B79BFF" text-anchor="middle" dominant-baseline="central">규</text>
+        </svg>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
