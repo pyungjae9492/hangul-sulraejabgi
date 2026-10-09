@@ -317,7 +317,9 @@
     if (daily.final || daily.status === 'done') {
       play.innerHTML = '<span>결과 보기</span><small class="muted">' + nextDailyText() + '</small>' + ARROW_R;
     } else if (daily.status === 'failed') {
-      play.innerHTML = '<span>시간 초과</span><small>' + (daily.invite && daily.invite.unlocked ? '이어하기 열림' : '링크로 이어하기') + '</small>' + ARROW_R;
+      const inv = daily.invite;
+      play.innerHTML = '<span>' + (inv && inv.unlocked ? currentStage() + '단계부터 이어하기' : '시간 초과 · 결과 보기') + '</span>' +
+        '<small>' + (inv && inv.unlocked ? '친구가 열어 줬어요' : inv ? '친구를 기다리는 중' : '공유하면 이어할 수 있어요') + '</small>' + ARROW_R;
     } else {
       const sec = daily.status === 'playing' && daily.deadline ? fmt(daily.deadline - Date.now()) + ' 남음' : st.seconds + '초';
       play.innerHTML = '<span>' + (st.boss ? st.title : '스테이지 ' + cur) + '</span><small' + (st.boss ? '' : ' class="muted"') + '>' + (st.boss ? '보스 · ' : '') + sec + '</small>' + ARROW_R;
@@ -959,14 +961,14 @@
         v.textContent = b && b.me ? b.me.rank + '위 · ' + b.total + '명 중 ›' : b ? '아직 기록 없음 ›' : '연결 안 됨';
       });
     }
-    $('#settle-next').textContent = daily.final || done ? nextDailyText() : '정답은 오늘 도전을 마치면 공개돼요.';
+    $('#settle-next').textContent = nextDailyText();
     if (canResume) renderResume();
     else {
       const pri = $('#settle-primary');
       const sec = $('#settle-secondary');
-      choice(pri, 'btn-primary wide', '결과 공유');
+      choice(pri, 'btn-primary wide', done ? '완주 기록 자랑하기' : '친구에게 결과 공유하기');
       pri.onclick = () => shareDaily();
-      choice(sec, 'btn-text', '지도');
+      choice(sec, 'btn-text', '지도로 돌아가기');
       sec.onclick = openMap;
       $('#settle-tertiary').hidden = true;
     }
@@ -980,25 +982,47 @@
   }
 
   // 시간 초과 뒤: 링크를 보내고, 그 링크로 다른 사람이 실제로 들어와야 이어하기가 열린다.
+  // 버튼만 봐도 무엇이 일어나는지 알 수 있게, 남은 횟수와 결과를 버튼 안에 적는다.
   function renderResume() {
     const inv = daily.invite;
     const pri = $('#settle-primary');
     const sec = $('#settle-secondary');
     const ter = $('#settle-tertiary');
+    const left = MAX_RESUMES - daily.resumes;
+    const count = ' (' + left + '/' + MAX_RESUMES + ')';
+    const stage = currentStage() + '단계';
     if (inv && inv.unlocked) {
-      choice(pri, 'btn-primary wide go', '이어하기', (inv.by ? inv.by + '님이' : '친구가') + ' 링크로 들어와서 열렸어요');
+      choice(pri, 'btn-primary wide go', stage + '부터 이어서 하기', (inv.by ? inv.by + '님' : '친구') + '이 링크를 열어 줬어요');
       pri.onclick = resumeDaily;
-      $('#settle-next').textContent = '멈춘 단계부터 시간을 새로 받아요. 오늘 한 번뿐이에요.';
-    } else {
-      choice(pri, 'btn-primary wide', inv ? '링크 다시 보내기' : '친구에게 링크 보내기', '보낸 링크로 친구가 들어오면 이어하기가 열려요 · 오늘 1번');
+      $('#settle-next').textContent = '제한 시간을 새로 받고 멈춘 단계부터 다시 시작해요.';
+    } else if (inv) {
+      choice(pri, 'btn-primary wide', '링크 한 번 더 보내기', '친구가 링크를 열면 여기서 바로 이어할 수 있어요');
       pri.onclick = sendInvite;
-      $('#settle-next').innerHTML = inv ? '<span class="waiting">친구가 링크로 들어오길 기다리는 중</span>' : '정답은 오늘 도전을 마치면 공개돼요.';
-      if (inv) startInvitePoll();
+      $('#settle-next').innerHTML = '<span class="waiting">친구가 링크를 열기를 기다리는 중</span>';
+      startInvitePoll();
+    } else {
+      choice(pri, 'btn-primary wide', '친구에게 공유하고 이어하기' + count, '친구가 링크를 열면 ' + stage + '부터 이어서 할 수 있어요');
+      pri.onclick = sendInvite;
+      $('#settle-next').textContent = '이대로 끝내면 오늘 기록이 확정되고 정답이 공개돼요.';
     }
-    choice(sec, 'btn-text', '오늘은 여기까지');
-    sec.onclick = () => { stopInvitePoll(); endRun(); showSettle(); };
+    choice(sec, 'btn-text end', '공유 안 하고 이대로 끝내기');
+    sec.onclick = () => {
+      // 되돌릴 수 없어서 한 번 더 누를 때만 끝낸다.
+      if (!sec.classList.contains('confirm')) {
+        sec.classList.add('confirm');
+        sec.innerHTML = '<span>정말 끝낼까요? 한 번 더 누르면 끝나요</span>';
+        clearTimeout(state.endArm);
+        state.endArm = setTimeout(() => { if (sec.classList.contains('confirm')) choice(sec, 'btn-text end', '공유 안 하고 이대로 끝내기'); }, 3000);
+        return;
+      }
+      clearTimeout(state.endArm);
+      stopInvitePoll();
+      endRun();
+      showSettle();
+    };
     ter.hidden = false;
-    ter.textContent = '지도';
+    ter.className = 'btn-text small';
+    ter.textContent = '나중에 정할게요 · 지도로';
     ter.onclick = () => { stopInvitePoll(); openMap(); };
   }
 
@@ -1010,7 +1034,7 @@
     if (!r || !r.code) { toast('인터넷에 연결되어 있어야 링크를 만들 수 있어요', 'bad'); return; }
     daily.invite = { code: r.code, unlocked: !!r.unlocked, by: null };
     saveDaily();
-    if (!r.unlocked) await shareDaily(r.code);
+    if (!r.unlocked && await shareDaily(r.code)) toast('링크를 보냈어요. 친구가 열면 바로 알려 드릴게요', 'ok');
     renderResume();
   }
 
@@ -1174,7 +1198,7 @@
     let tone = '';
     if (daily.status === 'playing') { badge = currentStage() + '단계 · ' + fmt(daily.deadline - Date.now()); tone = 'live'; }
     else if (daily.status === 'between') badge = reached + '단계 통과';
-    else if (daily.status === 'failed' && !daily.final) { badge = '시간 초과'; tone = 'warn'; }
+    else if (daily.status === 'failed' && !daily.final) { badge = daily.invite && daily.invite.unlocked ? '이어하기 열림' : '시간 초과 · 이어하기 가능'; tone = daily.invite && daily.invite.unlocked ? 'live' : 'warn'; }
     else if (daily.final) {
       badge = (daily.status === 'done' ? '완주' : reached + '단계') + ' · ★' + dailyStars();
       tone = 'done';
@@ -1760,5 +1784,5 @@
   $('#res-map').addEventListener('click', () => { if (state.mode === 'daily') openMap(); else if (state.mode === 'practice') finishTutorial(); else openHome(); });
 
   // 테스트와 디버깅용
-  window.__game = { state, progress, runTutorial, openMap, openHome, playDaily, startEndless, todaySet, getDaily: () => daily, setDaily: (d) => { daily = d; saveDaily(); } };
+  window.__game = { state, progress, runTutorial, showSettle, openMap, openHome, playDaily, startEndless, todaySet, getDaily: () => daily, setDaily: (d) => { daily = d; saveDaily(); } };
 })();

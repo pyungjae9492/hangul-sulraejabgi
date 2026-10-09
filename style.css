@@ -1023,3 +1023,9 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 .void.hl::after { animation-delay: calc(var(--k, 0) * .15s); }
 .plane.spot .void.hl { opacity: 1; }
 
+
+/* 결과 시트 CTA */
+#settle-secondary.end { color: var(--soft); }
+#settle-secondary.confirm { color: var(--coral); font-weight: 800; }
+.btn-text.small { height: 38px; font-size: 13px; color: var(--dim); }
+
