@@ -1029,3 +1029,15 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 #settle-secondary.confirm { color: var(--coral); font-weight: 800; }
 .btn-text.small { height: 38px; font-size: 13px; color: var(--dim); }
 
+
+/* 연습 판의 한 줄 설명 */
+.tip { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; padding: 12px 14px; border-radius: 16px; background: rgba(255, 209, 102, .07); border: 1px solid rgba(255, 209, 102, .22); }
+.tip.in { animation: capIn .4s cubic-bezier(.2, .85, .2, 1); }
+.tip p { flex: 1; margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--soft); }
+.tip p b { color: var(--gold); }
+.tip-v { display: flex; gap: 6px; flex: none; }
+.tip-v i { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); }
+.tip-v .vg { width: 26px; height: 26px; vertical-align: 0; }
+body.kp .tip { padding: 8px 12px; }
+body.kp .tip p { font-size: 13px; }
+

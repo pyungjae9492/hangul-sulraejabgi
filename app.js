@@ -357,6 +357,7 @@
     hint.classList.remove('spent', 'arm');
     hint.textContent = '힌트';
     $('#btn-skip').hidden = !(mode === 'tutorial' || mode === 'practice');
+    $('#tip').hidden = true;
     $('#btn-back').setAttribute('aria-label', mode === 'daily' ? '지도로' : '처음으로');
   }
 
@@ -1306,229 +1307,66 @@
   const allTiles = (b) => b.tiles.map((t) => [t.x, t.y]);
 
   const TOUR = [
-    // 1. 게임 소개와 놀이판
     { dur: 3000, async run(w) {
       tourBoard(null);
       tourVis('<div class="tour-logo hopping"><i>자</i><i>모</i><i>점</i><i>프</i><b class="logo-pawn"></b></div>');
       tourCap('두 글자 단어로 말을 움직이는<br><b>한글 점프 퍼즐</b>이에요');
     } },
-    { dur: 5600, async run(w) {
+    { dur: 4600, async run(w) {
       const plane = tourBoard(B.intro, true);
-      tourCap('자모 점프는 ' + o('자음 점프') + '와 ' + pu('모음 점프') + '로<br>말을 <span class="m">시작 칸</span>에서 <span class="c">깃발 칸</span>까지 옮겨 줄<br><b>정답 단어</b>를 찾는 게임이에요');
+      tourCap('말을 <span class="m">시작 칸</span>에서 <span class="c">깃발 칸</span>까지<br>옮겨 줄 <b>두 글자 단어</b>를 찾아요');
       await w(1500);
       drawArrow(plane.querySelector('.g-preview'), B.intro.start, B.intro.goal, '#C9CBD3', { faint: true, animate: true });
       plane.querySelector('.g-preview').classList.add('ghost');
-    } },
-    { dur: 3600, async run(w) {
-      tourBoard(B.intro);
-      tourCap('칸마다 <b>자음이 하나씩</b> 적혀 있어요');
-      const cons = B.intro.tiles.filter((t) => t.c).map((t) => [t.x, t.y]);
-      for (let k = 1; k <= cons.length; k++) { tourSpot(...cons.slice(0, k)); await w(380); }
-    } },
-    { dur: 3200, async run(w) {
-      const plane = tourBoard(B.intro);
-      tourSpot(B.intro.start);
-      tourCap('말은 <span class="m">초록 테두리 칸</span>에서 출발해요');
-      await w(500);
-      plane.querySelector('.pawn').classList.add('bounce');
-    } },
-    { dur: 3400, async run(w) {
-      const plane = tourBoard(B.intro);
-      tourSpot(B.intro.goal);
       tileAt(plane, B.intro.goal).classList.add('wave');
-      tourCap('<span class="c">깃발 칸</span>까지 가면 성공이에요');
     } },
-    { dur: 3200, async run(w) {
-      const plane = tourBoard(B.intro);
-      plane.classList.add('spot');
-      plane.querySelectorAll('.void').forEach((v, k) => { v.style.setProperty('--k', k); v.classList.add('hl'); });
-      tourCap('점만 찍힌 곳은 <b>빈자리</b>라서<br>밟을 수 없어요');
-    } },
-    { dur: 5000, async run(w) {
+    { dur: 4400, async run(w) {
       tourBoard(B.intro);
       tourVis(slots(['엄', '마'], 'popin'));
-      tourCap('단어의 <b>글자 하나가 점프 한 번</b>이에요<br>' + o('자음 점프') + '나 ' + pu('모음 점프') + '로 뛰어요');
+      tourCap('단어의 <b>글자 하나</b>로<br><b>점프 한 번</b>을 해요');
       await w(1300);
       const t = $('#tour-vis').querySelectorAll('.slots i');
       t[0].classList.add('o-ring');
       tourHint([0, 0], [1, 1], ORANGE, '엄');
-      await w(1000);
+      await w(900);
       t[1].classList.add('p-ring');
       tourHint([1, 1], [2, 1], PURPLE, '마');
     } },
-    // 2. 자음 점프
-    { dur: 3200, async run(w) {
+    { dur: 4400, async run(w) {
       tourBoard(B.cons);
       tourVis(split('금'));
-      tourCap('글자를 ' + o('자음') + '과 ' + pu('모음') + '으로 나눠 볼게요');
+      tourCap(o('자음 점프') + '<br>글자 속 <b>다른 자음 칸</b>으로 뛰어요');
       await w(500);
-      $('#tour-vis .split').classList.add('open');
-    } },
-    { dur: 4000, async run(w) {
-      tourBoard(B.cons);
-      tourVis(split('금', 'open cons'));
-      tourCap(o('자음 점프') + '<br>한 글자 안에 있는 <b>다른 자음 칸</b>으로 뛰어요');
-      await w(1100);
+      $('#tour-vis .split').classList.add('open', 'cons');
+      await w(900);
       await tourJump(step('consonant', '금', [0, 0], [1, 1]));
     } },
-    { dur: 3600, async run(w) {
-      tourBoard(B.cons);
-      tourPawn([1, 1]);
-      tourVis(split('금', 'open cons'));
-      tourCap('반대로 받침 <b>ㅁ</b>에서<br>첫소리 <b>ㄱ</b> 쪽으로도 뛸 수 있어요');
-      await w(1000);
-      await tourJump(step('consonant', '금', [1, 1], [0, 0]));
-    } },
-    { dur: 3200, async run(w) {
-      tourBoard(null);
-      tourVis(split('가', 'open cons no'));
-      tourCap('받침이 없는 글자는 자음이 하나뿐이라<br>' + o('자음 점프') + '를 할 수 없어요');
-    } },
-    { dur: 4200, async run(w) {
-      tourBoard(B.cons);
-      tourVis(split('꿈', 'open cons'));
-      tourCap('<b>ㄲ ㄸ ㅃ ㅆ ㅉ</b>은<br>ㄱ ㄷ ㅂ ㅅ ㅈ과 같은 자음으로 봐요');
-      await w(1300);
-      await tourJump(step('consonant', '꿈', [0, 0], [1, 1]));
-    } },
-    { dur: 3200, async run(w) {
-      tourBoard(null);
-      tourVis(split('꼭', 'open cons no'));
-      tourCap('꼭은 ㄲ과 ㄱ이 결국 같은 자음이라<br>' + o('자음 점프') + '를 할 수 없어요');
-    } },
     { dur: 4400, async run(w) {
-      tourBoard(B.dak);
-      tourVis(split('닭', 'open cons'));
-      tourCap('닭처럼 <b>받침이 둘</b>이면<br>ㄹ 칸, ㄱ 칸 어디로든 뛸 수 있어요');
-      await w(900);
-      tourHint([0, 0], [2, 0], ORANGE, '닭');
-      await w(500);
-      await tourJump(step('consonant', '닭', [0, 0], [1, 1]));
-    } },
-    { dur: 4000, async run(w) {
-      tourBoard(B.twoM);
-      tourVis(split('금', 'open cons'));
-      tourCap('같은 자음 칸이 여러 개면<br><b>아무 칸이나</b> 골라 뛰어도 돼요');
-      await w(700);
-      tourHint([0, 0], [2, 0], ORANGE, '금');
-      await w(400);
-      await tourJump(step('consonant', '금', [0, 0], [0, 2]));
-    } },
-    // 3. 모음 점프
-    { dur: 4200, async run(w) {
       tourBoard(B.right);
       tourVis(vbig('ㅏ', '→ 1칸'));
       tourCap(pu('모음 점프') + '<br>모음 획이 <b>튀어나온 쪽</b>으로 뛰어요');
       await w(1500);
       await tourJump(step('vowel', '나', [0, 0], [1, 0]));
     } },
-    { dur: 4000, async run(w) {
-      tourBoard(B.two);
-      tourVis(vbig('ㅠ', '↓ 2칸'));
-      tourCap('획이 두 개면 <b>두 칸</b>을 뛰어요<br>중간 빈자리는 그냥 넘어가요');
-      await w(1400);
-      await tourJump(step('vowel', '유', [0, 0], [0, 2]));
-    } },
-    { dur: 3800, async run(w) {
-      tourBoard(null);
-      tourVis(vgrid([['ㅗ', '↑'], ['ㅜ', '↓'], ['ㅓ', '←'], ['ㅛ', '↑2'], ['ㅠ', '↓2'], ['ㅕ', '←2']]));
-      tourCap('ㅗ는 위, ㅜ는 아래, ㅓ는 왼쪽<br>ㅛ ㅠ ㅕ는 두 칸씩이에요');
-    } },
-    { dur: 4600, async run(w) {
-      tourBoard(null);
-      tourVis(vgrid([['ㅐ', '→'], ['ㅔ', '←'], ['ㅚ', '↑'], ['ㅟ', '↓'], ['ㅘ', '↗'], ['ㅝ', '↙']]));
-      tourCap('<b>겹모음</b>도 튀어나온 획을 따라가요<br>ㅘ ㅙ는 ↗, ㅝ ㅞ는 ↙ 한 칸');
-    } },
-    { dur: 3800, async run(w) {
-      tourBoard(B.wa);
-      tourVis(vbig('ㅘ', '↗ 1칸'));
-      tourCap('ㅘ는 ㅗ(위)와 ㅏ(오른쪽)가 합쳐져서<br><b>오른쪽 위</b>로 뛰어요');
-      await w(1300);
-      await tourJump(step('vowel', '와', [0, 1], [1, 0]));
-    } },
-    { dur: 3400, async run(w) {
-      tourBoard(null);
-      tourVis(vgrid([['ㅡ', '✕'], ['ㅣ', '✕'], ['ㅢ', '✕']]));
-      tourCap('<b>ㅡ ㅣ ㅢ</b>는 튀어나온 획이 없어서<br>' + pu('모음 점프') + '를 할 수 없어요');
-    } },
-    { dur: 3800, async run(w) {
-      const plane = tourBoard(B.edge);
-      tourVis(vbig('ㅏ', '→ ✕'));
-      tourCap('내려설 <b>칸이 없는 쪽</b>으로는<br>뛸 수 없어요');
-      await w(900);
-      drawArrow(plane.querySelector('.g-path'), [0, 0], [1, 0], '#FF5A5F', { label: '나', animate: true });
-    } },
-    // 4. 단어로 풀기
-    { dur: 4200, async run(w) {
-      tourBoard(B.intro);
-      tourSpot(B.intro.start);
-      tourVis(slots(['엄', '마'], 'pick'));
-      tourCap('하나 더, 지금 <b>밟고 있는 자음</b>이<br>들어간 글자로만 뛸 수 있어요');
-      await w(1400);
-      const t = $('#tour-vis').querySelectorAll('.slots i');
-      t[0].classList.add('yes');
-      t[1].classList.add('nope');
-    } },
-    { dur: 5400, async run(w) {
+    { dur: 5200, async run(w) {
       tourBoard(B.intro);
       tourVis('<div class="slots"><i class="tile3d o-ring">엄</i><i class="tile3d p-ring">마</i></div>');
-      tourCap(o('엄') + '으로 ㅇ에서 ㅁ으로 자음 점프');
-      await w(800);
+      tourCap(o('엄') + '으로 자음 점프');
+      await w(700);
       await tourJump(step('consonant', '엄', [0, 0], [1, 1]));
-      tourCap(pu('마') + '로 오른쪽 모음 점프');
-      await w(500);
+      tourCap(pu('마') + '로 모음 점프');
+      await w(400);
       await tourJump(step('vowel', '마', [1, 1], [2, 1]));
-      tourCap('<b>엄마</b>로 깃발 도착!');
-    } },
-    { dur: 5000, async run(w) {
-      tourBoard(B.line);
-      tourVis(slots(['사', '람']));
-      tourCap('글자 순서는 상관없고<br>같은 글자를 <b>여러 번</b> 써도 돼요');
-      await w(900);
-      await tourJump(step('vowel', '사', [0, 0], [1, 0]));
-      await tourJump(step('vowel', '람', [1, 0], [2, 0]));
-      await tourJump(step('vowel', '람', [2, 0], [3, 0]));
-    } },
-    { dur: 5600, async run(w) {
-      tourBoard(B.mun);
-      tourVis('<div class="slots"><i class="tile3d">문</i><i class="tile3d">제</i></div>');
-      tourCap('두 글자를 <b>꼭 다 쓸 필요는 없어요</b><br>한 글자만으로 풀리기도 해요');
-      await w(1000);
-      const t = $('#tour-vis').querySelectorAll('.slots i');
-      t[0].classList.add('o-ring');
-      t[1].classList.add('nope');
-      await tourJump(step('consonant', '문', [0, 0], [1, 1]));
-      t[0].classList.remove('o-ring');
-      t[0].classList.add('p-ring');
-      await tourJump(step('vowel', '문', [1, 1], [1, 2]));
-      tourCap('자음 점프도 모음 점프도 ' + o('문') + '으로<br><b>문</b> 한 글자로 깃발 도착!');
-    } },
-    { dur: 4200, async run(w) {
-      tourBoard(null);
-      const R = ['vowelOnly', 'consonantOnly', 'useBoth', 'visitAll', 'visitOnce'];
-      tourVis('<div class="rule-demo">' + R.map((k, i) => '<span class="rule ' + k + '" style="--i:' + i + '">' + RULE_TEXT[k]() + '</span>').join('') + '</div>');
-      tourCap('판에 따라 <b>조건</b>이 붙기도 해요<br>처음 나올 때 알려 드릴게요');
-    } },
-    { dur: 5000, async run(w) {
-      tourBoard(B.intro);
-      tourVis('<div class="fake-field"><span class="typed"></span><i class="caret"></i></div>');
-      tourCap('단어를 입력하는 동안<br><b>갈 수 있는 길</b>이 미리 보여요');
-      const typed = $('#tour-vis .typed');
-      await w(800);
-      typed.textContent = '엄';
-      tourHint([0, 0], [1, 1], ORANGE, '엄');
-      await w(800);
-      typed.textContent = '엄마';
-      tourHint([1, 1], [2, 1], PURPLE, '마');
+      tileAt(tour.plane, [2, 1]).classList.add('wave');
+      tourCap('<b>엄마</b>로 깃발 도착, 정답!');
     } },
     { dur: 0, async run(w) {
       tourBoard(null);
       tourVis('<div class="tour-logo small"><i>자</i><i>모</i><i>점</i><i>프</i></div>');
-      tourCap('정답은 <b>사전에 있는 두 글자 명사</b>예요<br>쉬운 연습 다섯 판으로 감을 잡아 봐요');
+      tourCap('나머지 규칙은<br><b>연습 10판</b>에서 하나씩 알려 드릴게요');
       $('#tour-end').hidden = false;
     } },
   ];
-
 
   function playScene(i) {
     if (i < 0) i = 0;
@@ -1553,11 +1391,26 @@
 
   /* ---------- 연습 스테이지 3개 (설명 영상 뒤, 실제로 입력해서 풀기) ---------- */
   const PRACTICE = [
-    { tip: '자음 점프', answer: '지금', board: TB([[0, 0, 'ㄱ'], [1, 1, 'ㅁ']], [0, 0], [1, 1]) },
-    { tip: '모음 점프', answer: '우리', board: TB([[0, 0, 'ㅇ'], [0, 1, null]], [0, 0], [0, 1]) },
-    { tip: '모음 두 칸', answer: '우유', board: TB([[0, 0, 'ㅇ'], [0, 2, null]], [0, 0], [0, 2]) },
-    { tip: '두 글자 모두 쓰기', answer: '나라', board: TB([[0, 0, 'ㄴ'], [1, 0, 'ㄹ'], [2, 0, null]], [0, 0], [2, 0], { useBoth: true }) },
-    { tip: '자음 + 모음, 두 글자 모두', answer: '엄마', board: TB([[0, 0, 'ㅇ'], [1, 1, 'ㅁ'], [2, 1, null]], [0, 0], [2, 1], { useBoth: true }) },
+    { tip: '자음 점프', answer: '지금', board: TB([[0, 0, 'ㄱ'], [1, 1, 'ㅁ']], [0, 0], [1, 1], { consonantOnly: true }),
+      say: '말이 선 <b>ㄱ</b>과 깃발의 <b>ㅁ</b>이 한 글자에 같이 들어 있으면 건너뛸 수 있어요. 예: <b>금</b>' },
+    { tip: '받침에서 첫소리로', answer: '선물', board: TB([[1, 0, 'ㄴ'], [0, 1, 'ㅅ']], [1, 0], [0, 1], { consonantOnly: true }),
+      say: '받침 <b>ㄴ</b>에서 첫소리 <b>ㅅ</b>으로, 거꾸로도 뛸 수 있어요. 예: <b>신</b>' },
+    { tip: '쌍자음', answer: '잠깐', board: TB([[0, 0, 'ㄱ'], [1, 1, 'ㄴ']], [0, 0], [1, 1], { consonantOnly: true }),
+      say: '<b>ㄲ ㄸ ㅃ ㅆ ㅉ</b>은 ㄱ ㄷ ㅂ ㅅ ㅈ 칸으로 봐요. 예: <b>깐</b>은 ㄱ↔ㄴ' },
+    { tip: '겹받침', answer: '몸값', board: TB([[0, 0, 'ㄱ'], [1, 1, 'ㅅ']], [0, 0], [1, 1], { consonantOnly: true }),
+      say: '<b>값</b>처럼 받침이 둘이면 두 자음을 모두 써요. 값은 ㄱ ㅂ ㅅ 어디로든' },
+    { tip: '모음 점프', answer: '나무', board: TB([[0, 0, 'ㄴ'], [1, 0, null]], [0, 0], [1, 0], { vowelOnly: true }),
+      say: '모음은 획이 <b>튀어나온 쪽</b>으로 한 칸 뛰어요. ㅏ는 오른쪽!', v: ['ㅏ'] },
+    { tip: '위·아래·왼쪽', answer: '오늘', board: TB([[0, 1, 'ㅇ'], [0, 0, null]], [0, 1], [0, 0], { vowelOnly: true }),
+      say: 'ㅗ는 위, ㅜ는 아래, ㅓ는 왼쪽으로 뛰어요.', v: ['ㅗ', 'ㅜ', 'ㅓ'] },
+    { tip: '획이 두 개', answer: '우유', board: TB([[0, 0, 'ㅇ'], [0, 2, null]], [0, 0], [0, 2], { vowelOnly: true }),
+      say: '획이 두 개면 <b>두 칸</b>, 사이 빈자리는 넘어가요. ㅡ ㅣ는 튀어나온 획이 없어 못 뛰어요.', v: ['ㅠ', 'ㅡ', 'ㅣ'] },
+    { tip: '겹모음', answer: '사과', board: TB([[0, 1, 'ㄱ'], [1, 0, null]], [0, 1], [1, 0], { vowelOnly: true }),
+      say: 'ㅘ는 ㅗ(위)와 ㅏ(오른쪽)가 합쳐져 <b>오른쪽 위</b>로. ㅝ는 왼쪽 아래로 뛰어요.', v: ['ㅘ', 'ㅝ'] },
+    { tip: '자음 + 모음', answer: '엄마', board: TB([[0, 0, 'ㅇ'], [1, 1, 'ㅁ'], [2, 1, null]], [0, 0], [2, 1], { useBoth: true }),
+      say: '자음 점프로 갈아타고 모음 점프로 마무리! 이 판은 <b>두 글자를 모두</b> 써야 해요.' },
+    { tip: '같은 글자 여러 번', answer: '사람', board: TB([[0, 0, 'ㅅ'], [1, 0, 'ㅁ'], [2, 0, 'ㄹ'], [3, 0, null]], [0, 0], [3, 0]),
+      say: '같은 글자를 <b>몇 번이든</b> 다시 써도 돼요. 한 글자만으로 풀리는 판도 있어요.' },
   ];
 
   function startPractice(i) {
@@ -1568,6 +1421,10 @@
     loadPuzzle('practice', P.board, [P.answer].concat(more));
     $('#stage-title').textContent = '연습 ' + (i + 1) + ' / ' + PRACTICE.length;
     $('#bar-sub').textContent = P.tip;
+    const tip = $('#tip');
+    tip.innerHTML = '<p>' + P.say + '</p>' + (P.v ? '<span class="tip-v">' + P.v.map((v) => '<i>' + VG(v) + '</i>').join('') + '</span>' : '');
+    tip.hidden = false;
+    tip.classList.remove('in'); void tip.offsetWidth; tip.classList.add('in');
     $('#btn-hint').textContent = '정답 보기';
     if (finePointer) $('#answer').focus();
   }
