@@ -202,7 +202,7 @@ test('오늘의 도전: 화면과 랭킹 서버가 같은 파일(daily.js)로 �
   assert.deepEqual(a.filter((s) => s.boss).map((s) => s.n), D.BOSS_AT);
   assert.equal(new Set(a.map((s) => s.key)).size, D.TOTAL);
   for (const s of a) assert.ok(H.findPath(s.board, s.key), s.n + ' ' + s.key);
-  assert.deepEqual([D.MAX_HINTS, D.MAX_RESUMES], [3, 1]);
+  assert.deepEqual([D.MAX_HINTS, D.MAX_RESUMES], [3, 5]);
 });
 
 test('랭킹 서버용 game.js가 지금 게임 코드와 같다 (바꿨으면 node scripts/build-edge.js 후 재배포)', () => {

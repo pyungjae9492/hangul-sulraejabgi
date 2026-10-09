@@ -705,14 +705,17 @@
   /* ---------- 오늘의 도전: 하루 20단계 ---------- */
   // 5·10·15·20단계는 미리 만들어 둔 보스 풀에서 날짜별로 하나씩, 나머지 16단계는 날짜 시드로 그 자리에서 만든다.
   const DAILY_KEY = 'jamo-jump-daily3';
-  const { MAX_RESUMES, MAX_HINTS } = Daily; // 이어하기는 하루 1번(보낸 링크로 다른 사람이 들어와야 열림), 힌트는 3번
+  const { MAX_RESUMES, MAX_HINTS } = Daily; // 이어하기는 하루 5번(보낸 링크로 다른 사람이 들어와야 열림), 힌트는 3번
   const todayKey = () => Daily.kstDate();
   // 하루 한 번의 도전. 다시하기는 없고, 시간 초과로 멈추면 링크 초대로 열리는 이어하기만 있다.
-  // final은 오늘 도전이 끝났다는 뜻(완주했거나, 이어하기 없이 마쳤거나, 이어하기를 이미 쓰고 다시 멈춤).
+  // final은 오늘 도전이 끝났다는 뜻(완주했거나, 이어하기를 다 쓰고 다시 멈춤). 시간 초과로 멈춰도 이어하기가 남아 있으면 그날 안에 언제든 이어갈 수 있다.
   const freshDaily = () => ({ date: todayKey(), stage: 1, status: 'ready', deadline: null, final: false, times: {}, words: {}, resumes: 0, hinted: {}, invite: null });
   let daily = (() => {
     const d = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null');
-    return d && d.date === todayKey() ? Object.assign(freshDaily(), d) : freshDaily();
+    if (!d || d.date !== todayKey()) return freshDaily();
+    const x = Object.assign(freshDaily(), d);
+    if (x.final && x.status === 'failed' && x.resumes < MAX_RESUMES) x.final = false; // 예전 '끝내기'로 닫힌 기록도 다시 이어할 수 있게
+    return x;
   })();
   const saveDaily = () => localStorage.setItem(DAILY_KEY, JSON.stringify(daily));
   const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -1004,27 +1007,11 @@
     } else {
       choice(pri, 'btn-primary wide', '친구에게 공유하고 이어하기' + count, '친구가 링크를 열면 ' + stage + '부터 이어서 할 수 있어요');
       pri.onclick = sendInvite;
-      $('#settle-next').textContent = '이대로 끝내면 오늘 기록이 확정되고 정답이 공개돼요.';
+      $('#settle-next').textContent = '지금 나가도 괜찮아요. 오늘 안에 다시 들어와서 공유하면 이어할 수 있어요.';
     }
-    choice(sec, 'btn-text end', '공유 안 하고 이대로 끝내기');
-    sec.onclick = () => {
-      // 되돌릴 수 없어서 한 번 더 누를 때만 끝낸다.
-      if (!sec.classList.contains('confirm')) {
-        sec.classList.add('confirm');
-        sec.innerHTML = '<span>정말 끝낼까요? 한 번 더 누르면 끝나요</span>';
-        clearTimeout(state.endArm);
-        state.endArm = setTimeout(() => { if (sec.classList.contains('confirm')) choice(sec, 'btn-text end', '공유 안 하고 이대로 끝내기'); }, 3000);
-        return;
-      }
-      clearTimeout(state.endArm);
-      stopInvitePoll();
-      endRun();
-      showSettle();
-    };
-    ter.hidden = false;
-    ter.className = 'btn-text small';
-    ter.textContent = '나중에 정할게요 · 지도로';
-    ter.onclick = () => { stopInvitePoll(); openMap(); };
+    choice(sec, 'btn-text', '나중에 할게요 · 지도로');
+    sec.onclick = () => { stopInvitePoll(); openMap(); };
+    ter.hidden = true;
   }
 
   async function sendInvite() {
@@ -1060,6 +1047,7 @@
 
   function resumeDaily() {
     stopInvitePoll();
+    daily.invite = null;
     daily.resumes++;
     daily.status = 'between';
     daily.deadline = null;

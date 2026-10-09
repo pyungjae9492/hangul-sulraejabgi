@@ -389,7 +389,7 @@ window.BOSSES = {"5":{"title":"외길","tip":"칸이 한 줄뿐이에요. 같은
   const BOSS_AT = [5, 10, 15, 20];
   const BOSS_SECONDS = 180;
   const MAX_HINTS = 3; // 한 시도(20단계) 동안 쓸 수 있는 힌트
-  const MAX_RESUMES = 1; // 이어하기: 하루 한 번, 보낸 링크로 다른 사람이 들어와야 열린다
+  const MAX_RESUMES = 5; // 이어하기: 하루 다섯 번, 보낸 링크로 다른 사람이 들어와야 열린다
 
   function buildSet(date, ctx, BOSSES) {
     const day = Math.floor(Date.parse(date + 'T00:00:00Z') / 864e5);

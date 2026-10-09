@@ -117,10 +117,11 @@ async function start(uid: string, b: any) {
   // 원래 제한 시간 안이면 같은 기록을 돌려준다(새로고침 등). 지났으면 이어하기로만 다시 열 수 있다.
   if (ex && Date.parse(ex.deadline) - GRACE_MS - 1500 > now) return { ok: true, deadline: ex.deadline };
   if (ex) {
-    // 시간이 끝난 단계를 다시 여는 건 이어하기뿐이다. 보낸 링크로 다른 사람이 들어와 열린 초대가 있어야 한다. 하루 한 번.
-    const inv = must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).maybeSingle()) as any;
-    if (!inv || !inv.unlocked_by || inv.stage !== stage) throw new Fail('locked');
-    if (inv.used_at) throw new Fail('resume_used');
+    // 시간이 끝난 단계를 다시 여는 건 이어하기뿐이다. 보낸 링크로 다른 사람이 들어와 열린 초대가 있어야 한다. 하루 MAX_RESUMES번.
+    const invs = await invitesOf(uid, day);
+    if (invs.filter((i) => i.used_at).length >= D.MAX_RESUMES) throw new Fail('resume_used');
+    const inv = invs.find((i) => i.unlocked_by && !i.used_at && i.stage === stage);
+    if (!inv) throw new Fail('locked');
     must(await admin.from('daily_invites').update({ used_at: new Date().toISOString() }).eq('code', inv.code).is('used_at', null));
     must(await admin.from('daily_runs').update({ resumes: (run.resumes || 0) + 1 }).eq('user_id', uid).eq('day', day).eq('attempt', attempt));
   }
@@ -170,18 +171,23 @@ async function board(uid: string, b: any) {
   return { ...(data as object), nickname };
 }
 
-// 시간 초과로 멈춘 단계에 대해 이어하기 링크를 만든다 (하루 하나).
+async function invitesOf(uid: string, day: string) {
+  return must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).order('created_at', { ascending: false })) as any[];
+}
+
+// 시간 초과로 멈춘 단계에 대해 이어하기 링크를 만든다. 아직 안 쓴 링크가 있으면 그걸 다시 준다.
 async function invite(uid: string, b: any, fp: string) {
   const day = checkDay(b.day, true);
   const stage = int(b.stage, 1, D.TOTAL);
   const ex = (await stagesOf(uid, day, ATTEMPT)).find((r) => r.stage === stage);
   // 화면의 시간 초과는 서버 마감(여유 포함)보다 조금 이르다. 원래 제한 시간이 지났으면 멈춘 것으로 본다.
   if (!ex || ex.cleared_at || Date.now() < Date.parse(ex.deadline) - GRACE_MS - 1500) throw new Fail('not_failed');
-  const inv = must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).maybeSingle()) as any;
+  const invs = await invitesOf(uid, day);
+  if (invs.filter((i) => i.used_at).length >= D.MAX_RESUMES) throw new Fail('resume_used');
+  const inv = invs.find((i) => !i.used_at);
   if (inv) {
-    if (inv.used_at) throw new Fail('resume_used');
     if (inv.stage !== stage && !inv.unlocked_by) must(await admin.from('daily_invites').update({ stage }).eq('code', inv.code));
-    return { code: inv.code, unlocked: !!inv.unlocked_by };
+    return { code: inv.code, unlocked: !!inv.unlocked_by && inv.stage === stage };
   }
   const code = newCode();
   must(await admin.from('daily_invites').insert({ code, owner: uid, day, stage, owner_fp: fp }));
@@ -190,7 +196,7 @@ async function invite(uid: string, b: any, fp: string) {
 
 async function inviteStatus(uid: string, b: any) {
   if (typeof b.day !== 'string' || !DAY_RE.test(b.day)) throw new Fail('arg');
-  const inv = must(await admin.from('daily_invites').select('code, stage, unlocked_by, used_at').eq('owner', uid).eq('day', b.day).maybeSingle()) as any;
+  const inv = (await invitesOf(uid, b.day)).find((i) => !i.used_at);
   if (!inv) return { invite: null };
   let by = null;
   if (inv.unlocked_by) by = (must(await admin.from('players').select('nickname').eq('id', inv.unlocked_by).maybeSingle()) as any)?.nickname || null;
