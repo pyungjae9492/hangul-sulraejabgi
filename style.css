@@ -184,9 +184,12 @@ b { font-weight: 800; }
 .pill-btn.plain { color: var(--soft); }
 .pill-btn:active { background: var(--tile); }
 
-.cond { margin: 10px auto 0; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; }
-.cond.vowel { color: var(--purple-text); background: rgba(155, 107, 255, .12); border: 1px solid rgba(155, 107, 255, .35); }
-.cond.all { color: var(--mint); background: rgba(61, 220, 151, .08); border: 1px solid rgba(61, 220, 151, .32); }
+.cond { margin: 10px auto 0; display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.rule { padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; color: var(--text); background: var(--mat); border: 1px solid var(--line); }
+.rule.vowelOnly { color: var(--purple-text); background: rgba(155, 107, 255, .12); border-color: rgba(155, 107, 255, .35); }
+.rule.consonantOnly { color: var(--orange); background: rgba(255, 138, 61, .1); border-color: rgba(255, 138, 61, .35); }
+.rule.visitAll { color: var(--mint); background: rgba(61, 220, 151, .08); border-color: rgba(61, 220, 151, .32); }
+.rule.maxJumps, .rule.exactJumps { color: var(--gold); background: rgba(255, 209, 102, .08); border-color: rgba(255, 209, 102, .3); }
 
 /* ---------- 게임판 ---------- */
 .board-host {
@@ -233,6 +236,7 @@ b { font-weight: 800; }
 .tile.start { --ring: inset 0 0 0 max(2px, calc(var(--cell) * .045)) var(--mint); }
 .tile.goal { --ring: inset 0 0 0 max(2px, calc(var(--cell) * .045)) var(--coral); background: linear-gradient(180deg, #43292E, #321F23 70%); }
 .tile .flag { width: 44%; color: var(--coral); display: grid; }
+.tile .flag:not(:only-child) { position: absolute; top: 7%; right: 7%; width: 26%; }
 .tile .flag svg { width: 100%; height: auto; }
 .tile.lit { --glow: 0 0 calc(var(--cell) * .45) calc(var(--cell) * .02) var(--glow-c, var(--mint)); }
 .tile.bad { animation: tileShake .4s ease; }
@@ -443,7 +447,9 @@ b { font-weight: 800; }
   background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 5px 0 var(--side);
 }
-.steps { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.steps { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.steps.long .step { padding: 4px 9px 4px 4px; font-size: 12px; gap: 5px; }
+.steps.long .step b { width: 22px; height: 22px; font-size: 13px; }
 .step { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; font-size: 14px; font-weight: 800; }
 .step b { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; font-family: var(--display); font-weight: 400; font-size: 16px; }
 .step.o { color: var(--orange); background: rgba(255, 138, 61, .12); }
@@ -457,11 +463,15 @@ b { font-weight: 800; }
 .others[open] summary::after { content: ' ▴'; }
 .others p { margin: 6px 0 0; font-size: 14px; line-height: 1.7; color: var(--soft); }
 .sheet-actions { display: grid; gap: 4px; margin-top: 16px; }
+#result .stars-row svg { width: 30px; height: 30px; }
+#result .stars-row svg:nth-child(2) { width: 36px; height: 36px; margin-top: -4px; }
+#result .word { margin: 8px 0; }
+#result .word span { width: 44px; height: 44px; font-size: 23px; }
+#result .sheet-actions { margin-top: 10px; }
 
 .intro-badge { margin: 4px auto 0; width: max-content; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 800; color: var(--ink); background: var(--text); }
 .intro-badge.boss { background: var(--coral); color: #fff; }
-.intro-badge.vowel { background: var(--purple); color: #fff; }
-.intro-badge.all { background: var(--mint); }
+.intro-badge.rule { background: var(--gold); }
 .intro-title { margin: 12px 0 6px; text-align: center; font-family: var(--display); font-weight: 400; font-size: 34px; }
 .intro-sub { margin: 0; text-align: center; font-size: 15px; line-height: 1.6; color: var(--soft); }
 

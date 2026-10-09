@@ -15,6 +15,10 @@
     tiles: [{ x: 0, y: 0, c: 'ㅊ' }, { x: 1, y: 1, c: 'ㄱ' }, { x: 0, y: 2, c: 'ㅇ' }, { x: 1, y: 3, c: null }],
     start: [0, 0], goal: [1, 3], cond: 'none',
   };
+  const LINE = {
+    tiles: [{ x: 0, y: 0, c: 'ㅅ' }, { x: 1, y: 0, c: 'ㅁ' }, { x: 2, y: 0, c: 'ㄹ' }, { x: 3, y: 0, c: null }],
+    start: [0, 0], goal: [3, 0],
+  };
   const ARROWS = { '1,0': '→', '-1,0': '←', '0,-1': '↑', '0,1': '↓', '1,-1': '↗', '-1,1': '↙', '-1,-1': '↖', '1,1': '↘' };
   const FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4h11l-2.5 4L17 12H6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const STAR = (on) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="' + (on ? 'star-on' : 'star-off') + '" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
@@ -38,6 +42,21 @@
   };
   const euro = (w) => w + (lastJong(w) && lastJong(w) !== 8 ? '으로' : '로');
   const arrowGlyph = (v) => ARROWS[Math.sign(v[0]) + ',' + Math.sign(v[1])] + Math.max(Math.abs(v[0]), Math.abs(v[1]));
+  const RULE_TEXT = {
+    vowelOnly: () => '모음 점프만',
+    consonantOnly: () => '자음 점프만',
+    visitAll: () => '모든 칸 밟기',
+    maxJumps: (n) => n + '번 안에',
+    exactJumps: (n) => '딱 ' + n + '번 점프',
+  };
+  const RULE_INFO = {
+    vowelOnly: '이 판에서는 자음 점프를 쓸 수 없어요.',
+    consonantOnly: '이 판에서는 모음 점프를 쓸 수 없어요.',
+    visitAll: '깃발에 닿기 전에 모든 칸을 한 번씩은 밟아야 해요.',
+    maxJumps: '정해진 횟수 안에 깃발에 닿아야 해요.',
+    exactJumps: '정확히 그 횟수만큼 점프해서 깃발에 닿아야 해요.',
+  };
+  const activeRules = (board) => Object.entries(H.rulesOf(board)).filter(([, v]) => v);
   const totalStars = () => Object.values(progress.stars).reduce((a, b) => a + b, 0);
 
   /* ---------- 게임판 ---------- */
@@ -235,7 +254,7 @@
       (doneIdx > 0 ? '<path d="' + d(pts.slice(0, doneIdx + 1)) + '" fill="none" stroke="#3DDC97" stroke-opacity=".55" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' : '') +
       '</svg>' + nodes;
     const st = STAGES[cur - 1];
-    $('#map-play').innerHTML = '<span>스테이지 ' + cur + '</span>' + (st.boss ? '<small>보스</small>' : '') + ARROW_R;
+    $('#map-play').innerHTML = '<span>스테이지 ' + cur + '</span>' + (st.boss ? '<small>보스 · ' + st.title + '</small>' : '') + ARROW_R;
     $('#star-total').textContent = '★ ' + totalStars() + ' / ' + TOTAL * 3;
     const wrap = $('#tower-wrap');
     requestAnimationFrame(() => { wrap.scrollTop = pts[cur - 1][1] - wrap.clientHeight * 0.55; });
@@ -282,40 +301,41 @@
     show('play');
     setChrome('stage');
     const title = $('#stage-title');
-    title.textContent = st.boss ? '보스 ' + n : '스테이지 ' + n;
+    title.textContent = st.boss ? st.title : '스테이지 ' + n;
     title.classList.toggle('boss', st.boss);
     renderProg(n);
-    const c = st.board.cond;
+    const rules = activeRules(st.board);
     const cond = $('#cond');
-    cond.hidden = c === 'none';
-    cond.className = 'cond ' + c;
-    cond.textContent = c === 'all' ? '모든 칸 밟기' : c === 'vowel' ? '모음 점프만' : '';
+    cond.hidden = !rules.length;
+    cond.className = 'cond';
+    cond.innerHTML = rules.map(([k, v]) => '<span class="rule ' + k + '">' + RULE_TEXT[k](v) + '</span>').join('');
     state.plane = renderBoard($('#board'), st.board);
     $('#answer').value = '';
     setInput(true);
     renderAbilities();
 
-    const intro = st.boss ? 'boss' : c !== 'none' && !progress.seen[c] ? c : null;
-    if (intro) showIntro(intro, st);
+    const fresh = rules.map(([k]) => k).find((k) => !progress.seen[k]);
+    if (st.boss || fresh) showIntro(st, fresh);
     else if (finePointer) $('#answer').focus();
   }
 
-  function showIntro(kind, st) {
+  function showIntro(st, fresh) {
     const badge = $('#intro-badge');
-    badge.className = 'intro-badge ' + kind;
-    const cond = st.board.cond;
-    if (kind === 'boss') {
-      badge.textContent = '보스 스테이지';
-      $('#intro-title').textContent = '정답이 ' + st.answers.length + '개뿐';
-      $('#intro-sub').textContent = cond === 'vowel' ? '게다가 모음 점프만 쓸 수 있어요.' : cond === 'all' ? '게다가 모든 칸을 밟아야 해요.' : '판을 천천히 읽어 보세요.';
+    const rules = activeRules(st.board);
+    if (fresh) { progress.seen[fresh] = true; saveProgress(); }
+    if (st.boss) {
+      badge.className = 'intro-badge boss';
+      badge.textContent = '보스 · 스테이지 ' + st.n;
+      $('#intro-title').textContent = st.title || '보스';
+      $('#intro-sub').textContent = st.tip || '';
       $('#intro-go').textContent = '도전';
     } else {
+      const [k, v] = rules.find(([key]) => key === fresh);
+      badge.className = 'intro-badge rule';
       badge.textContent = '새 규칙';
-      $('#intro-title').textContent = cond === 'vowel' ? '모음 점프만' : '모든 칸 밟기';
-      $('#intro-sub').textContent = cond === 'vowel' ? '이 판에서는 자음 점프를 쓸 수 없어요.' : '깃발에 닿기 전에 판의 모든 칸을 한 번씩 밟아야 해요.';
+      $('#intro-title').textContent = RULE_TEXT[k](v);
+      $('#intro-sub').textContent = RULE_INFO[k];
       $('#intro-go').textContent = '알겠어요';
-      progress.seen[cond] = true;
-      saveProgress();
     }
     openSheet('#intro', true);
   }
@@ -341,13 +361,13 @@
       drawPreview();
       return;
     }
-    const onlyVowel = state.puzzle.board.cond === 'vowel';
+    const rules = H.rulesOf(state.puzzle.board);
     const sc = startConsonant();
     box.innerHTML = sy.map((ch) => {
       const a = H.abilitiesOf(ch);
       const chips = [];
-      if (a.consonants) chips.push('<span class="chip o' + (onlyVowel ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>');
-      if (a.vector) chips.push('<span class="chip p">' + arrowGlyph(a.vector) + '</span>');
+      if (a.consonants) chips.push('<span class="chip o' + (rules.vowelOnly ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>');
+      if (a.vector) chips.push('<span class="chip p' + (rules.consonantOnly ? ' blocked' : '') + '">' + arrowGlyph(a.vector) + '</span>');
       if (!chips.length) chips.push('<span class="chip off">점프 없음</span>');
       return '<div class="ab' + (a.letters.includes(sc) ? ' here' : '') + '"><b>' + ch + '</b>' + chips.join('') + '</div>';
     }).join('');
@@ -362,7 +382,7 @@
     if (!state.open || state.busy) return;
     const board = state.puzzle.board;
     for (const ch of typed()) {
-      for (const m of H.movesFrom(state.idx, board.start, H.abilitiesOf(ch), board.cond === 'vowel')) {
+      for (const m of H.movesFrom(state.idx, board.start, H.abilitiesOf(ch), H.rulesOf(board))) {
         drawArrow(g, board.start, m.to, m.type === 'consonant' ? ORANGE : PURPLE, { faint: true });
       }
     }
@@ -388,44 +408,36 @@
     await showMiss(raw);
   }
 
-  // 오답이면 말이 실제로 어디까지 가고 어디서 막히는지 보여준다.
+  // 오답이면 말이 실제로 어디까지 가는지 보여주고, 막힌 이유를 한 줄로 알려준다.
   async function showMiss(word) {
     state.busy = true;
     setInput(false);
     const token = state.token;
     const board = state.puzzle.board;
-    const onlyV = board.cond === 'vowel';
-    const syl = [...word];
-    const ab = syl.map(H.abilitiesOf);
     const plane = state.plane;
     plane.querySelector('.g-preview').innerHTML = '';
-    let best = null;
-    for (const i of [0, 1]) {
-      for (const m of H.movesFrom(state.idx, board.start, ab[i], onlyV)) {
-        const next = H.movesFrom(state.idx, m.to, ab[1 - i], onlyV);
-        const cand = { i, m, next };
-        if (!best || (!best.next.length && next.length)) best = cand;
-      }
+    const d = H.diagnose(board, word, state.idx);
+    const rules = H.rulesOf(board);
+    const steps = d.path.slice(0, 6);
+    for (const s of steps) {
+      if (token !== state.token) return;
+      await playStep(plane, s);
     }
-    const pawn = plane.querySelector('.pawn');
-    let msg;
-    if (!best) {
-      msg = '출발 자음 ' + startConsonant() + '이 든 글자가 없어요';
+    if (token !== state.token) return;
+    const last = steps.length ? steps[steps.length - 1].to : board.start;
+    const here = state.idx.cells.get(last.join(','));
+    const msg = {
+      start: '출발 자음 ' + startConsonant() + '이 든 글자가 없어요',
+      stuck: here && here.c ? here.c + ' 칸에서 더 갈 곳이 없어요' : '깃발까지 이어지지 않아요',
+      used: '두 글자를 모두 한 번은 써야 해요',
+      visit: '모든 칸을 밟지 못했어요',
+      jumps: rules.exactJumps ? '딱 ' + rules.exactJumps + '번에 닿아야 해요' : rules.maxJumps + '번 안에 못 가요',
+    }[d.reason];
+    if (d.reason === 'start') {
       const t = tileAt(plane, board.start);
       t.classList.remove('bad'); void t.offsetWidth; t.classList.add('bad');
     } else {
-      await playStep(plane, { ...best.m, from: board.start, syllable: syl[best.i] });
-      if (token !== state.token) return;
-      const other = syl[1 - best.i];
-      const here = state.idx.cells.get(best.m.to.join(','));
-      if (best.next.length) {
-        await playStep(plane, { ...best.next[0], from: best.m.to, syllable: other });
-        msg = board.cond === 'all' ? '모든 칸을 밟지 못했어요' : '깃발에 닿지 않아요';
-      } else if (!here.c) {
-        msg = '깃발에 일찍 닿았어요 · 두 글자를 다 써야 해요';
-      } else {
-        msg = here.c + ' 칸에서 ‘' + other + '’' + (lastJong(other) && lastJong(other) !== 8 ? '으' : '') + '로는 못 가요';
-      }
+      const pawn = plane.querySelector('.pawn');
       pawn.classList.remove('miss'); void pawn.offsetWidth; pawn.classList.add('miss');
     }
     shakeField();
@@ -461,10 +473,11 @@
   function showResult(word, path, stars, revealed) {
     const st = STAGES[state.stage - 1];
     const k = $('#res-kicker');
-    k.textContent = revealed ? '정답 공개' : st.boss ? '보스 격파' : '스테이지 ' + state.stage + ' 클리어';
+    k.textContent = revealed ? '정답 공개' : st.boss ? '보스 격파 · ' + st.title : '스테이지 ' + state.stage + ' 클리어';
     k.className = 'kicker' + (revealed ? ' muted' : st.boss ? ' boss' : '');
     $('#res-stars').innerHTML = [1, 2, 3].map((i) => STAR(i <= stars)).join('');
     $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
+    $('#res-steps').classList.toggle('long', path.length > 3);
     $('#res-steps').innerHTML = path.map((s) => {
       const cons = s.type === 'consonant';
       return '<span class="step ' + (cons ? 'o' : 'p') + '"><b>' + s.syllable + '</b>' + (cons ? s.fromC + '→' + s.target : arrowGlyph(s.vector)) + '</span>';
@@ -514,9 +527,13 @@
   }
 
   /* ---------- 튜토리얼 ---------- */
-  const TUT_STEPS = 7;
+  const TUT_STEPS = 9;
 
-  function coach({ step, title, sub, letters, want, wrong, next }) {
+  function coachLetters(word, used) {
+    return [...word].map((ch, i) => ({ ch, used: used[i] }));
+  }
+
+  function coach({ step, title, sub, letters, want, wrong, next, keepUsed }) {
     $('#coach-dots').innerHTML = Array.from({ length: TUT_STEPS }, (_, i) => '<i class="' + (i === step ? 'on' : i < step ? 'done' : '') + '"></i>').join('');
     $('#coach-title').innerHTML = title;
     const subEl = $('#coach-sub');
@@ -528,9 +545,9 @@
     const token = state.token;
     return new Promise((resolve) => {
       (letters || []).forEach((L) => {
-        const b = el('button', 'letter tile3d' + (L.used ? ' ' + L.used : '') + (want && !L.used ? ' want' : ''), L.ch);
+        const b = el('button', 'letter tile3d' + (L.used ? ' ' + L.used : '') + (want && (!L.used || keepUsed) ? ' want' : ''), L.ch);
         b.type = 'button';
-        b.disabled = !want || !!L.used;
+        b.disabled = !want || (!!L.used && !keepUsed);
         b.addEventListener('click', () => {
           if (token !== state.token) return;
           if (L.ch === want) { box.querySelectorAll('button').forEach((x) => { x.disabled = true; }); resolve(L.ch); return; }
@@ -561,44 +578,72 @@
     title.textContent = '튜토리얼';
     title.classList.remove('boss');
     $('#cond').hidden = true;
-    const plane = renderBoard($('#board'), EXAMPLE);
+    let board = EXAMPLE;
+    let plane = renderBoard($('#board'), board);
     state.plane = plane;
-    const path = H.findPath(EXAMPLE, '규칙');
     const spot = (...ps) => {
       plane.classList.toggle('spot', ps.length > 0);
       plane.querySelectorAll('.tile').forEach((t) => t.classList.remove('focus'));
       ps.forEach((p) => tileAt(plane, p).classList.add('focus'));
     };
+    const path = H.findPath(EXAMPLE, '규칙');
 
-    spot(EXAMPLE.start);
+    spot(board.start);
     await coach({ step: 0, title: '<span class="m">초록 칸</span>에서 출발해요', sub: '그 위의 금색 말이 나예요.', next: '다음' });
     if (!alive()) return;
-    spot(EXAMPLE.goal);
-    await coach({ step: 1, title: '<span class="c">깃발</span>까지 가면 클리어', sub: '두 글자 단어 하나로 두 번 점프해서 가요.', next: '다음' });
+    spot(board.goal);
+    await coach({ step: 1, title: '<span class="c">깃발</span>까지 가면 클리어', sub: '두 글자 단어 하나로 점프해서 가요.', next: '다음' });
     if (!alive()) return;
-    spot(EXAMPLE.start);
+    spot(board.start);
     await coach({
       step: 2, title: '지금 밟은 자음은 <span class="m">ㅊ</span>', sub: 'ㅊ이 들어 있는 글자만 쓸 수 있어요. 눌러 보세요.',
-      letters: [{ ch: '규' }, { ch: '칙' }], want: '칙', wrong: '규에는 ㅊ이 없어요. 다른 글자!',
+      letters: coachLetters('규칙', []), want: '칙', wrong: '규에는 ㅊ이 없어요. 다른 글자!',
     });
     if (!alive()) return;
     spot();
     await playStep(plane, path[0]);
     if (!alive()) return;
-    await coach({ step: 3, title: '<span class="o">자음 점프!</span>', sub: '칙 안의 다른 자음 ㄱ 칸으로 건너뛰었어요.', letters: [{ ch: '규' }, { ch: '칙', used: 'o' }], next: '다음' });
+    await coach({ step: 3, title: '<span class="o">자음 점프!</span>', sub: '칙 안의 다른 자음 ㄱ 칸으로 건너뛰었어요.', letters: coachLetters('규칙', [null, 'o']), next: '다음' });
     if (!alive()) return;
     spot(path[0].to);
     await coach({
-      step: 4, title: '이제 <span class="m">ㄱ</span> 위예요', sub: '남은 글자 규에는 ㄱ이 들어 있죠. 눌러 보세요.',
-      letters: [{ ch: '규' }, { ch: '칙', used: 'o' }], want: '규', wrong: '',
+      step: 4, title: '이제 <span class="m">ㄱ</span> 위예요', sub: '규에도 ㄱ이 들어 있죠. 눌러 보세요.',
+      letters: coachLetters('규칙', [null, 'o']), want: '규', wrong: '',
     });
     if (!alive()) return;
     spot();
     await playStep(plane, path[1]);
     if (!alive()) return;
-    await coach({ step: 5, title: '<span class="p">모음 점프!</span>', sub: 'ㅠ는 획이 아래로 두 개라서 아래로 2칸.', letters: [{ ch: '규', used: 'p' }, { ch: '칙', used: 'o' }], next: '다음' });
+    await coach({ step: 5, title: '<span class="p">모음 점프!</span>', sub: 'ㅠ는 획이 아래로 두 개라서 아래로 2칸.', letters: coachLetters('규칙', ['p', 'o']), next: '다음' });
     if (!alive()) return;
-    await coach({ step: 6, title: '클리어! 정답은 <span class="m">규칙</span>', sub: '이제 단어를 직접 입력해서 20 스테이지를 올라가 보세요.', next: '스테이지 1 시작' });
+
+    // 두 번째 판: 같은 글자를 다시 쓴다
+    board = LINE;
+    plane = renderBoard($('#board'), board);
+    state.plane = plane;
+    const idx = H.makeBoardIndex(board);
+    const seq = [['사', 'ㅅ'], ['람', 'ㅁ'], ['람', 'ㄹ']];
+    const used = [null, null];
+    let pos = board.start;
+    spot(pos);
+    await coach({ step: 6, title: '글자는 <span class="m">몇 번이든</span> 다시 써요', sub: '점프 횟수도 자유예요. 이번엔 사람으로 가 볼게요.', next: '해 보기' });
+    if (!alive()) return;
+    for (let i = 0; i < seq.length; i++) {
+      const [want, c] = seq[i];
+      spot(pos);
+      await coach({
+        step: 7, title: '<span class="m">' + c + '</span> 위예요. 어느 글자?', sub: i === 2 ? '람을 한 번 더 써요!' : c + '이 들어 있는 글자를 눌러요.',
+        letters: coachLetters('사람', used), want, wrong: c + '이 없는 글자예요.', keepUsed: true,
+      });
+      if (!alive()) return;
+      spot();
+      const mv = H.movesFrom(idx, pos, H.abilitiesOf(want), { vowelOnly: true })[0];
+      await playStep(plane, Object.assign({ syllable: want, from: pos }, mv));
+      if (!alive()) return;
+      used[want === '사' ? 0 : 1] = 'p';
+      pos = mv.to;
+    }
+    await coach({ step: 8, title: '클리어! 이제 직접 해 봐요', sub: '단어를 입력하면 말이 알아서 길을 찾아 점프해요.', letters: coachLetters('사람', used), next: '스테이지 1 시작' });
     if (!alive()) return;
     finishTutorial();
   }

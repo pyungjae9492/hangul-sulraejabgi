@@ -1,15 +1,14 @@
 /*
  * 자모 점프 규칙 엔진 (원작: 네 가지 소원 EP.2 3회전 데스매치)
  *
- * 영상에서 확인한 규칙
- * - 글자 하나마다 점프 두 개 중 하나를 고른다.
- * - 어떤 점프든, 지금 서 있는 칸의 자음이 들어 있는 글자만 쓸 수 있다. ("같은 글자의 ...")
- *   · 자음 점프: 글자를 이루는 서로 다른 자음 칸으로 이동 (초성 <-> 받침, 양방향)
+ * - 단어의 두 글자를 몇 번이든 다시 쓸 수 있고, 점프 횟수에도 제한이 없다.
+ * - 글자는 지금 밟고 있는 칸의 자음이 그 글자에 들어 있을 때만 쓸 수 있다.
+ *   · 자음 점프: 같은 글자의 다른 자음 칸으로 이동 (초성 <-> 받침, 겹받침은 구성 자음 모두)
  *   · 모음 점프: 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동
- * - 모음이 ㅡ, ㅣ, ㅢ 이면 모음 점프 없음. 받침이 없거나 자음이 한 종류뿐이면 자음 점프 없음.
- * - 이동할 방향에 칸이 없으면 이동할 수 없다.
- * - 단어의 각 글자는 한 번씩, 순서 상관없이 사용한다.
- * - 추가 조건: "모든 칸을 거쳐야 한다", "모음 점프만 사용해야 한다"
+ * - 깃발 칸에 닿으면 끝난다. 그때까지 두 글자를 모두 한 번 이상 썼어야 한다.
+ * - 같은 자음이 여러 칸에 있을 수 있고, 깃발 칸에도 자음이 있을 수 있다.
+ * - 규칙(rules): vowelOnly(모음 점프만), consonantOnly(자음 점프만), visitAll(모든 칸 밟기),
+ *   maxJumps(N번 안에), exactJumps(딱 N번)
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -18,18 +17,13 @@
   const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
   const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
   const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-
-  // 쌍자음은 기본 자음 칸으로 취급한다.
   const BASE = { 'ㄲ': 'ㄱ', 'ㄸ': 'ㄷ', 'ㅃ': 'ㅂ', 'ㅆ': 'ㅅ', 'ㅉ': 'ㅈ' };
-  // 겹받침은 구성 자음을 모두 사용할 수 있다.
   const COMPOUND = {
     'ㄳ': ['ㄱ', 'ㅅ'], 'ㄵ': ['ㄴ', 'ㅈ'], 'ㄶ': ['ㄴ', 'ㅎ'], 'ㄺ': ['ㄹ', 'ㄱ'], 'ㄻ': ['ㄹ', 'ㅁ'],
     'ㄼ': ['ㄹ', 'ㅂ'], 'ㄽ': ['ㄹ', 'ㅅ'], 'ㄾ': ['ㄹ', 'ㅌ'], 'ㄿ': ['ㄹ', 'ㅍ'], 'ㅀ': ['ㄹ', 'ㅎ'], 'ㅄ': ['ㅂ', 'ㅅ'],
   };
   const BOARD_CONSONANTS = ['ㄱ','ㄴ','ㄷ','ㄹ','ㅁ','ㅂ','ㅅ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-
-  // 모음별 이동 [dx, dy]. dx: 오른쪽 +, dy: 아래쪽 +.
-  // 튀어나온 획의 방향과 획 수로 계산한다. 복합모음은 두 방향을 합친 대각선 한 칸.
+  // [dx, dy]: 오른쪽 +x, 아래쪽 +y. 복합모음은 두 방향을 합친 대각선 1칸.
   const VOWEL_MOVES = {
     'ㅏ': [1, 0], 'ㅐ': [1, 0], 'ㅑ': [2, 0], 'ㅒ': [2, 0],
     'ㅓ': [-1, 0], 'ㅔ': [-1, 0], 'ㅕ': [-2, 0], 'ㅖ': [-2, 0],
@@ -39,6 +33,7 @@
     'ㅝ': [-1, 1], 'ㅞ': [-1, 1],
     'ㅡ': null, 'ㅢ': null, 'ㅣ': null,
   };
+  const MAX_JUMPS = 12;
 
   const isSyllable = (ch) => !!ch && ch.length === 1 && ch >= '가' && ch <= '힣';
   const isHangulWord = (w) => typeof w === 'string' && w.length > 0 && [...w].every(isSyllable);
@@ -47,80 +42,129 @@
     const code = ch.charCodeAt(0) - 0xac00;
     return { cho: CHO[Math.floor(code / 588)], jung: JUNG[Math.floor((code % 588) / 28)], jong: JONG[code % 28] };
   }
-
   const baseOf = (c) => BASE[c] || c;
 
-  // 한 글자가 가진 점프: { consonants: [...] (2개 이상일 때만 사용 가능), vector: [dx,dy] | null }
   function abilitiesOf(ch) {
     const { cho, jung, jong } = decompose(ch);
     const set = [baseOf(cho)];
     if (jong) for (const c of COMPOUND[jong] || [baseOf(jong)]) if (!set.includes(c)) set.push(c);
-    // letters: 글자를 이루는 자음 전체. 이 중 하나를 밟고 있어야 그 글자를 쓸 수 있다.
     return { letters: set, consonants: set.length >= 2 ? set : null, vector: VOWEL_MOVES[jung] || null };
   }
 
   const key = (x, y) => x + ',' + y;
+  const same = (a, b) => a[0] === b[0] && a[1] === b[1];
 
-  // 보드: { tiles: [{x,y,c}], start: [x,y], goal: [x,y], cond: 'none'|'all'|'vowel' }
-  // goal 칸은 자음이 없는 빈 칸이다 (자음 점프으로는 도착할 수 없다).
+  function rulesOf(board) {
+    const r = Object.assign({}, board.rules || {});
+    if (board.cond === 'vowel') r.vowelOnly = true;
+    if (board.cond === 'all') r.visitAll = true;
+    return r;
+  }
+
   function makeBoardIndex(board) {
     const cells = new Map();
     const byConsonant = new Map();
-    for (const t of board.tiles) {
+    const order = new Map();
+    board.tiles.forEach((t, i) => {
       cells.set(key(t.x, t.y), t);
-      if (t.c) byConsonant.set(t.c, t);
-    }
-    return { cells, byConsonant };
+      order.set(key(t.x, t.y), i);
+      if (t.c) {
+        if (!byConsonant.has(t.c)) byConsonant.set(t.c, []);
+        byConsonant.get(t.c).push(t);
+      }
+    });
+    return { cells, byConsonant, order };
   }
 
-  function movesFrom(idx, pos, ability, onlyVowel) {
+  // rules 는 객체. 예전 호출과의 호환을 위해 true 는 vowelOnly 로 본다.
+  function movesFrom(idx, pos, ability, rules) {
+    const r = rules === true ? { vowelOnly: true } : rules || {};
     const out = [];
     const here = idx.cells.get(key(pos[0], pos[1]));
-    // 밟고 있는 칸의 자음이 이 글자에 없으면 이 글자의 점프는 하나도 쓸 수 없다.
     if (!here || !here.c || !ability.letters.includes(here.c)) return out;
-    if (ability.vector) {
+    if (ability.vector && !r.consonantOnly) {
       const nx = pos[0] + ability.vector[0];
       const ny = pos[1] + ability.vector[1];
       if (idx.cells.has(key(nx, ny))) out.push({ type: 'vowel', to: [nx, ny], vector: ability.vector });
     }
-    if (!onlyVowel && ability.consonants) {
+    if (ability.consonants && !r.vowelOnly) {
       for (const c of ability.consonants) {
         if (c === here.c) continue;
-        const t = idx.byConsonant.get(c);
-        if (t) out.push({ type: 'consonant', to: [t.x, t.y], fromC: here.c, target: c });
+        for (const t of idx.byConsonant.get(c) || []) out.push({ type: 'consonant', to: [t.x, t.y], fromC: here.c, target: c });
       }
     }
     return out;
   }
 
-  // 단어이 시작 칸에서 도착 칸까지 갈 수 있으면 이동 경로를 돌려준다.
-  function findPath(board, word, idxArg) {
-    if (!isHangulWord(word) || [...word].length !== 2) return null;
-    const idx = idxArg || makeBoardIndex(board);
+  // 너비 우선 탐색. relax 로 일부 조건을 풀어서 "어떤 조건 때문에 실패했는지"도 알아낼 수 있다.
+  function search(board, word, idx, relax) {
+    relax = relax || {};
+    const rules = rulesOf(board);
     const syl = [...word];
     const abil = syl.map(abilitiesOf);
-    const onlyVowel = board.cond === 'vowel';
-    const total = board.tiles.length;
-    for (const order of [[0, 1], [1, 0]]) {
-      const walk = (step, pos, visited, path) => {
-        if (step === 2) {
-          if (pos[0] !== board.goal[0] || pos[1] !== board.goal[1]) return null;
-          if (board.cond === 'all' && visited.size !== total) return null;
-          return path;
+    const n = board.tiles.length;
+    const full = n >= 31 ? -1 : (1 << n) - 1;
+    const bit = (p) => 1 << idx.order.get(key(p[0], p[1]));
+    const needVisit = rules.visitAll && !relax.visit;
+    const exact = !relax.jumps && rules.exactJumps;
+    const limit = (!relax.jumps && (rules.exactJumps || rules.maxJumps)) || MAX_JUMPS;
+    const start = { pos: board.start, used: 0, vis: bit(board.start), depth: 0, prev: null, step: null };
+    const seen = new Set();
+    const queue = [start];
+    const all = [start];
+    for (let qi = 0; qi < queue.length; qi++) {
+      const s = queue[qi];
+      if (s.depth >= limit) continue;
+      for (let si = 0; si < 2; si++) {
+        for (const m of movesFrom(idx, s.pos, abil[si], rules)) {
+          const ns = {
+            pos: m.to, used: s.used | (1 << si), vis: s.vis | bit(m.to), depth: s.depth + 1, prev: s,
+            step: Object.assign({ syllable: syl[si], index: si, from: s.pos }, m),
+          };
+          if (same(m.to, board.goal)) {
+            const ok = (relax.used || ns.used === 3) && (!needVisit || ns.vis === full) && (!exact || ns.depth === exact);
+            if (ok) return { path: trace(ns), all };
+            continue; // 깃발에 닿으면 거기서 끝난다
+          }
+          const k = m.to[0] + ',' + m.to[1] + '|' + ns.used + '|' + (needVisit ? ns.vis : 0) + '|' + (exact ? ns.depth : 0);
+          if (seen.has(k)) continue;
+          seen.add(k);
+          queue.push(ns);
+          all.push(ns);
         }
-        const si = order[step];
-        for (const m of movesFrom(idx, pos, abil[si], onlyVowel)) {
-          const nv = new Set(visited);
-          nv.add(key(m.to[0], m.to[1]));
-          const r = walk(step + 1, m.to, nv, path.concat([{ syllable: syl[si], index: si, from: pos, ...m }]));
-          if (r) return r;
-        }
-        return null;
-      };
-      const r = walk(0, board.start, new Set([key(board.start[0], board.start[1])]), []);
-      if (r) return r;
+      }
     }
-    return null;
+    return { path: null, all };
+  }
+
+  function trace(s) {
+    const steps = [];
+    for (let c = s; c.step; c = c.prev) steps.push(c.step);
+    return steps.reverse();
+  }
+
+  function findPath(board, word, idxArg) {
+    if (!isHangulWord(word) || [...word].length !== 2) return null;
+    return search(board, word, idxArg || makeBoardIndex(board)).path;
+  }
+
+  // 오답일 때 왜 안 되는지와, 보여줄 만한 부분 경로를 돌려준다.
+  function diagnose(board, word, idxArg) {
+    const idx = idxArg || makeBoardIndex(board);
+    const r = search(board, word, idx);
+    if (r.path) return { ok: true, path: r.path };
+    const loose = search(board, word, idx, { used: true, visit: true, jumps: true });
+    if (!loose.path) {
+      if (loose.all.length === 1) return { ok: false, reason: 'start', path: [] };
+      let best = loose.all[0];
+      const d = (s) => Math.max(Math.abs(s.pos[0] - board.goal[0]), Math.abs(s.pos[1] - board.goal[1]));
+      for (const s of loose.all) if (d(s) < d(best) || (d(s) === d(best) && s.depth < best.depth)) best = s;
+      return { ok: false, reason: 'stuck', path: trace(best) };
+    }
+    if (!search(board, word, idx, { visit: true, jumps: true }).path) return { ok: false, reason: 'used', path: loose.path };
+    const p2 = search(board, word, idx, { jumps: true }).path;
+    if (!p2) return { ok: false, reason: 'visit', path: loose.path };
+    return { ok: false, reason: 'jumps', path: p2 };
   }
 
   function solveAll(board, words) {
@@ -133,66 +177,8 @@
     return out;
   }
 
-  function shuffle(arr, rng) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  }
-
-  const DIFFICULTY = {
-    easy: { tiles: [4, 5], answers: [6, 40] },
-    normal: { tiles: [4, 5], answers: [2, 12] },
-    hard: { tiles: [5, 6], answers: [1, 3] },
-  };
-
-  function randomBoard(tileCount, cond, rng) {
-    // 타일 수에 맞춰 촘촘한 영역 안에 배치한다.
-    const region = tileCount <= 4 ? [3, 3] : tileCount === 5 ? (rng() < 0.5 ? [3, 4] : [4, 3]) : [4, 4];
-    const all = [];
-    for (let y = 0; y < region[1]; y++) for (let x = 0; x < region[0]; x++) all.push([x, y]);
-    const pick = shuffle(all, rng).slice(0, tileCount);
-    const cons = shuffle(BOARD_CONSONANTS, rng);
-    const tiles = pick.map(([x, y], i) => ({ x, y, c: cons[i] }));
-    const goal = tiles[tiles.length - 1];
-    goal.c = null;
-    const start = tiles[0];
-    // 좌표를 좌상단 기준으로 정규화
-    const minX = Math.min(...tiles.map((t) => t.x));
-    const minY = Math.min(...tiles.map((t) => t.y));
-    tiles.forEach((t) => { t.x -= minX; t.y -= minY; });
-    return {
-      tiles,
-      start: [start.x, start.y],
-      goal: [goal.x, goal.y],
-      cond,
-      cols: Math.max(...tiles.map((t) => t.x)) + 1,
-      rows: Math.max(...tiles.map((t) => t.y)) + 1,
-    };
-  }
-
-  // 정답이 반드시 존재하는 문제를 만든다.
-  function generatePuzzle(words, opts = {}) {
-    const rng = opts.rng || Math.random;
-    const level = DIFFICULTY[opts.difficulty || 'normal'];
-    const [minA, maxA] = level.answers;
-    let best = null;
-    for (let i = 0; i < (opts.maxTries || 400); i++) {
-      const r = rng();
-      const cond = opts.cond || (r < 0.12 ? 'all' : r < 0.32 ? 'vowel' : 'none');
-      const count = cond === 'all' ? 3 : level.tiles[0] + Math.floor(rng() * (level.tiles[1] - level.tiles[0] + 1));
-      const board = randomBoard(count, cond, rng);
-      const answers = solveAll(board, words);
-      if (answers.length >= minA && answers.length <= maxA) return { board, answers };
-      if (answers.length > 0 && (!best || Math.abs(answers.length - minA) < Math.abs(best.answers.length - minA))) best = { board, answers };
-    }
-    return best;
-  }
-
   return {
-    CHO, JUNG, JONG, VOWEL_MOVES, BOARD_CONSONANTS, DIFFICULTY,
-    decompose, abilitiesOf, isHangulWord, makeBoardIndex, movesFrom, findPath, solveAll, generatePuzzle, randomBoard,
+    CHO, JUNG, JONG, VOWEL_MOVES, BOARD_CONSONANTS, MAX_JUMPS,
+    decompose, abilitiesOf, isHangulWord, makeBoardIndex, movesFrom, findPath, diagnose, solveAll, rulesOf,
   };
 });
