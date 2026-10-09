@@ -836,7 +836,7 @@
     const rowsTxt = [blocks.slice(0, 10).join(''), blocks.slice(10).join('')];
     const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'),
       (daily.status === 'done' ? '완주! ' : reached + '/20 ') + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' · ' + fmt(totalTime()),
-      ...rowsTxt, daily.resumes ? '(이어하기 ' + daily.resumes + '회)' : '', location.href.split(/[?#]/)[0]].filter(Boolean).join('\n');
+      ...rowsTxt, daily.resumes ? '(이어하기 ' + daily.resumes + '회)' : '', 'https://jamojump.app'].filter(Boolean).join('\n');
     try {
       if (navigator.share) { await navigator.share({ text }); return true; }
     } catch (e) {

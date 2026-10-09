@@ -3,7 +3,7 @@
 두 글자 단어로 자음과 모음을 타고 점프해서 초록 칸에서 깃발까지 가는 한글 퍼즐입니다.
 웹 예능 〈네 가지 소원〉 EP.2 3회전 데스매치의 숨바꼭질 게임을 차용해 만들었습니다.
 
-https://pyungjae9492.github.io/hangul-sulraejabgi/
+https://jamojump.app
 
 ## 규칙
 
