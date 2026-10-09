@@ -389,8 +389,7 @@ window.BOSSES = {"5":{"title":"외길","tip":"칸이 한 줄뿐이에요. 같은
   const BOSS_AT = [5, 10, 15, 20];
   const BOSS_SECONDS = 180;
   const MAX_HINTS = 3; // 한 시도(20단계) 동안 쓸 수 있는 힌트
-  const MAX_RESUMES = 1; // 공유하고 이어하기: 하루 전체에서
-  const MAX_RETRIES = 5; // 1단계부터 다시하기: 하루에
+  const MAX_RESUMES = 1; // 이어하기: 하루 한 번, 보낸 링크로 다른 사람이 들어와야 열린다
 
   function buildSet(date, ctx, BOSSES) {
     const day = Math.floor(Date.parse(date + 'T00:00:00Z') / 864e5);
@@ -416,7 +415,7 @@ window.BOSSES = {"5":{"title":"외길","tip":"칸이 한 줄뿐이에요. 같은
   // 한국 시간 기준 날짜 (YYYY-MM-DD)
   const kstDate = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
 
-  return { TOTAL, BOSS_AT, BOSS_SECONDS, MAX_HINTS, MAX_RESUMES, MAX_RETRIES, buildSet, kstDate };
+  return { TOTAL, BOSS_AT, BOSS_SECONDS, MAX_HINTS, MAX_RESUMES, buildSet, kstDate };
 });
 
 }).call(window);

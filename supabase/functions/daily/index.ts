@@ -34,6 +34,17 @@ class Fail extends Error {
 }
 const GRACE_MS = 4000; // 네트워크 지연 여유
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const ATTEMPT = 1; // 다시하기는 없앴다. 하루 한 번의 도전과, 링크로 열리는 이어하기 한 번뿐.
+const CODE_RE = /^[a-z0-9]{6,12}$/;
+
+// 같은 기기에서 링크를 열어 자기 이어하기를 여는 걸 막기 위한 지문 (IP + 브라우저). 원문은 저장하지 않는다.
+async function fingerprint(req: Request) {
+  const ip = (req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '').split(',')[0].trim();
+  const ua = req.headers.get('user-agent') || '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ip + '|' + ua));
+  return [...new Uint8Array(buf)].slice(0, 16).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+const newCode = () => [...crypto.getRandomValues(new Uint8Array(8))].map((b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join('');
 
 function int(v: unknown, lo: number, hi: number) {
   const n = Number(v);
@@ -93,7 +104,7 @@ async function recompute(uid: string, day: string, attempt: number) {
 
 async function start(uid: string, b: any) {
   const day = checkDay(b.day);
-  const attempt = int(b.attempt, 1, 1 + D.MAX_RETRIES);
+  const attempt = ATTEMPT;
   const stage = int(b.stage, 1, D.TOTAL);
   await player(uid);
   const run = await runOf(uid, day, attempt);
@@ -103,11 +114,14 @@ async function start(uid: string, b: any) {
   const ex = at(stage);
   const now = Date.now();
   if (ex?.cleared_at) throw new Fail('cleared');
-  if (ex && Date.parse(ex.deadline) > now) return { ok: true, deadline: ex.deadline };
+  // 원래 제한 시간 안이면 같은 기록을 돌려준다(새로고침 등). 지났으면 이어하기로만 다시 열 수 있다.
+  if (ex && Date.parse(ex.deadline) - GRACE_MS - 1500 > now) return { ok: true, deadline: ex.deadline };
   if (ex) {
-    // 시간이 끝난 단계를 다시 여는 건 '공유하고 이어하기'뿐이다. 하루 전체에서 한 번.
-    const runs = must(await admin.from('daily_runs').select('resumes').eq('user_id', uid).eq('day', day)) as any[];
-    if (runs.reduce((a, r) => a + r.resumes, 0) >= D.MAX_RESUMES) throw new Fail('resume_used');
+    // 시간이 끝난 단계를 다시 여는 건 이어하기뿐이다. 보낸 링크로 다른 사람이 들어와 열린 초대가 있어야 한다. 하루 한 번.
+    const inv = must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).maybeSingle()) as any;
+    if (!inv || !inv.unlocked_by || inv.stage !== stage) throw new Fail('locked');
+    if (inv.used_at) throw new Fail('resume_used');
+    must(await admin.from('daily_invites').update({ used_at: new Date().toISOString() }).eq('code', inv.code).is('used_at', null));
     must(await admin.from('daily_runs').update({ resumes: (run.resumes || 0) + 1 }).eq('user_id', uid).eq('day', day).eq('attempt', attempt));
   }
   const st = setFor(day)[stage - 1];
@@ -120,7 +134,7 @@ async function start(uid: string, b: any) {
 
 async function clear(uid: string, b: any) {
   const day = checkDay(b.day, true);
-  const attempt = int(b.attempt, 1, 1 + D.MAX_RETRIES);
+  const attempt = ATTEMPT;
   const stage = int(b.stage, 1, D.TOTAL);
   const word = typeof b.word === 'string' ? b.word.trim() : '';
   const ex = (await stagesOf(uid, day, attempt)).find((r) => r.stage === stage);
@@ -136,7 +150,7 @@ async function clear(uid: string, b: any) {
 
 async function hint(uid: string, b: any) {
   const day = checkDay(b.day, true);
-  const attempt = int(b.attempt, 1, 1 + D.MAX_RETRIES);
+  const attempt = ATTEMPT;
   const stage = int(b.stage, 1, D.TOTAL);
   const rows = await stagesOf(uid, day, attempt);
   const ex = rows.find((r) => r.stage === stage);
@@ -154,6 +168,48 @@ async function board(uid: string, b: any) {
   const nickname = await player(uid);
   const data = must(await admin.rpc('daily_board', { p_day: b.day, p_uid: uid, p_limit: 50 }));
   return { ...(data as object), nickname };
+}
+
+// 시간 초과로 멈춘 단계에 대해 이어하기 링크를 만든다 (하루 하나).
+async function invite(uid: string, b: any, fp: string) {
+  const day = checkDay(b.day, true);
+  const stage = int(b.stage, 1, D.TOTAL);
+  const ex = (await stagesOf(uid, day, ATTEMPT)).find((r) => r.stage === stage);
+  // 화면의 시간 초과는 서버 마감(여유 포함)보다 조금 이르다. 원래 제한 시간이 지났으면 멈춘 것으로 본다.
+  if (!ex || ex.cleared_at || Date.now() < Date.parse(ex.deadline) - GRACE_MS - 1500) throw new Fail('not_failed');
+  const inv = must(await admin.from('daily_invites').select('*').eq('owner', uid).eq('day', day).maybeSingle()) as any;
+  if (inv) {
+    if (inv.used_at) throw new Fail('resume_used');
+    if (inv.stage !== stage && !inv.unlocked_by) must(await admin.from('daily_invites').update({ stage }).eq('code', inv.code));
+    return { code: inv.code, unlocked: !!inv.unlocked_by };
+  }
+  const code = newCode();
+  must(await admin.from('daily_invites').insert({ code, owner: uid, day, stage, owner_fp: fp }));
+  return { code, unlocked: false };
+}
+
+async function inviteStatus(uid: string, b: any) {
+  if (typeof b.day !== 'string' || !DAY_RE.test(b.day)) throw new Fail('arg');
+  const inv = must(await admin.from('daily_invites').select('code, stage, unlocked_by, used_at').eq('owner', uid).eq('day', b.day).maybeSingle()) as any;
+  if (!inv) return { invite: null };
+  let by = null;
+  if (inv.unlocked_by) by = (must(await admin.from('players').select('nickname').eq('id', inv.unlocked_by).maybeSingle()) as any)?.nickname || null;
+  return { invite: { code: inv.code, stage: inv.stage, unlocked: !!inv.unlocked_by, used: !!inv.used_at, by } };
+}
+
+// 링크로 들어온 사람. 다른 계정이고 다른 기기여야 초대를 연다.
+async function visit(uid: string, b: any, fp: string) {
+  const code = String(b.code || '').toLowerCase();
+  if (!CODE_RE.test(code)) throw new Fail('arg');
+  const inv = must(await admin.from('daily_invites').select('*').eq('code', code).maybeSingle()) as any;
+  if (!inv) return { ok: false, reason: 'none' };
+  if (inv.owner === uid || inv.owner_fp === fp) return { ok: false, reason: 'self' };
+  await player(uid);
+  must(await admin.from('daily_invite_visits').upsert({ code, visitor: uid, visitor_fp: fp }, { onConflict: 'code,visitor', ignoreDuplicates: true }));
+  const owner = (must(await admin.from('players').select('nickname').eq('id', inv.owner).maybeSingle()) as any)?.nickname || '친구';
+  if (inv.unlocked_by || inv.used_at) return { ok: true, already: true, owner };
+  must(await admin.from('daily_invites').update({ unlocked_by: uid, unlocked_at: new Date().toISOString() }).eq('code', code).is('unlocked_by', null));
+  return { ok: true, owner };
 }
 
 const BANNED = ['시발', '씨발', '병신', '개새', '좆', '섹스', '니미', '애미', '느금'];
@@ -177,12 +233,16 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json({ error: 'body' }, 400); }
   try {
     const uid = u.user.id;
+    const fp = await fingerprint(req);
     switch (body.action) {
       case 'start': return json(await start(uid, body));
       case 'clear': return json(await clear(uid, body));
       case 'hint': return json(await hint(uid, body));
       case 'board': return json(await board(uid, body));
       case 'nick': return json(await nick(uid, body));
+      case 'invite': return json(await invite(uid, body, fp));
+      case 'invite_status': return json(await inviteStatus(uid, body));
+      case 'visit': return json(await visit(uid, body, fp));
       default: return json({ error: 'action' }, 400);
     }
   } catch (e) {
@@ -191,4 +251,3 @@ Deno.serve(async (req) => {
     return json({ error: 'server' }, 500);
   }
 });
-

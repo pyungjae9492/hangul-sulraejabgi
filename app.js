@@ -282,11 +282,9 @@
     const play = $('#map-play');
     const st = set[Math.min(cur, TOTAL) - 1];
     if (daily.final || daily.status === 'done') {
-      play.innerHTML = dayClosed()
-        ? '<span>결과 보기</span><small class="muted">' + nextDailyText() + '</small>' + ARROW_R
-        : '<span>결과 · 다시하기</span><small>다시하기 ' + (MAX_RETRIES - daily.retries) + '회</small>' + ARROW_R;
+      play.innerHTML = '<span>결과 보기</span><small class="muted">' + nextDailyText() + '</small>' + ARROW_R;
     } else if (daily.status === 'failed') {
-      play.innerHTML = '<span>시간 초과 · 정산</span><small>이어하기 ' + Math.max(0, MAX_RESUMES - daily.resumes) + '회</small>' + ARROW_R;
+      play.innerHTML = '<span>시간 초과</span><small>' + (daily.invite && daily.invite.unlocked ? '이어하기 열림' : '링크로 이어하기') + '</small>' + ARROW_R;
     } else {
       const sec = daily.status === 'playing' && daily.deadline ? fmt(daily.deadline - Date.now()) + ' 남음' : st.seconds + '초';
       play.innerHTML = '<span>' + (st.boss ? st.title : '스테이지 ' + cur) + '</span><small' + (st.boss ? '' : ' class="muted"') + '>' + (st.boss ? '보스 · ' : '') + sec + '</small>' + ARROW_R;
@@ -662,12 +660,11 @@
   /* ---------- 오늘의 도전: 하루 20단계 ---------- */
   // 5·10·15·20단계는 미리 만들어 둔 보스 풀에서 날짜별로 하나씩, 나머지 16단계는 날짜 시드로 그 자리에서 만든다.
   const DAILY_KEY = 'jamo-jump-daily2';
-  const { MAX_RESUMES, MAX_RETRIES, MAX_HINTS } = Daily; // 이어하기 하루 1회, 다시하기 하루 5회, 힌트는 한 시도에 3회
+  const { MAX_RESUMES, MAX_HINTS } = Daily; // 이어하기는 하루 1번(보낸 링크로 다른 사람이 들어와야 열림), 힌트는 3번
   const todayKey = () => Daily.kstDate();
-  // final은 지금 시도가 끝났다는 뜻이다. 하루가 끝나는 건 시도가 끝났고 다시하기도 다 쓴 경우(dayClosed).
-  // runs에는 시도마다 결과를 남긴다. 실패한 시도도 다시하기로 지워지지 않고, 랭킹에는 그날 가장 좋은 시도가 올라간다.
-  const freshRun = () => ({ stage: 1, status: 'ready', deadline: null, final: false, times: {}, words: {}, runResumes: 0, hinted: {} });
-  const freshDaily = () => ({ date: todayKey(), resumes: 0, retries: 0, attempt: 1, runs: [], ...freshRun() });
+  // 하루 한 번의 도전. 다시하기는 없고, 시간 초과로 멈추면 링크 초대로 열리는 이어하기만 있다.
+  // final은 오늘 도전이 끝났다는 뜻(완주했거나, 이어하기 없이 마쳤거나, 이어하기를 이미 쓰고 다시 멈춤).
+  const freshDaily = () => ({ date: todayKey(), stage: 1, status: 'ready', deadline: null, final: false, times: {}, words: {}, resumes: 0, hinted: {}, invite: null });
   let daily = (() => {
     const d = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null');
     return d && d.date === todayKey() ? Object.assign(freshDaily(), d) : freshDaily();
@@ -679,43 +676,22 @@
   const clearedCount = () => (daily.status === 'done' ? TOTAL : daily.stage - 1);
   const dailyStars = () => BOSS_AT.filter((b) => clearedCount() >= b).length;
   const totalTime = () => Object.values(daily.times).reduce((a, b) => a + b, 0);
-  const dayClosed = () => daily.final && daily.retries >= MAX_RETRIES;
-  const runBetter = (a, b) => (a.reached !== b.reached ? a.reached > b.reached : a.ms < b.ms);
-  const bestRun = () => daily.runs.reduce((best, r) => (!best || runBetter(r, best) ? r : best), null);
   const hintsUsed = () => Object.keys(daily.hinted || {}).length;
 
   // 랭킹 서버로 보내는 기록. 실패해도 게임은 그대로 이어진다.
   const Rank = window.JamoRank;
   function rankSend(action, extra) {
     if (!Rank) return Promise.resolve(null);
-    return Rank.queue(action, Object.assign({ day: daily.date, attempt: daily.attempt }, extra))
+    return Rank.queue(action, Object.assign({ day: daily.date, attempt: 1 }, extra))
       .catch((e) => { console.warn('랭킹 기록 실패', action, e.message); return null; });
-  }
-
-  // 지금 시도의 결과를 기록한다. 같은 시도는 덮어써서, 실패 뒤 이어하기로 더 가면 그 기록으로 바뀐다.
-  function recordRun() {
-    const snap = { attempt: daily.attempt, reached: clearedCount(), stars: dailyStars(), ms: totalTime(),
-      resumes: daily.runResumes, hints: hintsUsed(), done: daily.status === 'done', at: Date.now() };
-    const i = daily.runs.findIndex((r) => r.attempt === daily.attempt);
-    if (i >= 0) daily.runs[i] = snap; else daily.runs.push(snap);
   }
 
   function endRun() {
     daily.final = true;
     daily.deadline = null;
-    recordRun();
     saveDaily();
   }
 
-  function retryDaily() {
-    if (daily.retries >= MAX_RETRIES) return;
-    if (!daily.final) endRun();
-    daily.retries++;
-    daily.attempt++;
-    Object.assign(daily, freshRun());
-    saveDaily();
-    playDaily();
-  }
   const setCache = {};
 
   function todaySet(date = daily.date) {
@@ -730,7 +706,6 @@
   function failDaily() {
     daily.status = 'failed';
     daily.deadline = null;
-    recordRun();
     if (daily.resumes >= MAX_RESUMES) endRun();
     saveDaily();
   }
@@ -911,12 +886,12 @@
   function showSettle() {
     closeSheets();
     syncDaily();
+    stopInvitePoll();
     const done = daily.status === 'done';
     const failed = daily.status === 'failed';
     const canResume = failed && !daily.final && daily.resumes < MAX_RESUMES;
-    const canRetry = (failed || daily.final) && daily.retries < MAX_RETRIES;
     const reached = clearedCount();
-    $('#settle-kicker').textContent = '오늘의 도전 · ' + dateLabel(daily.date) + (daily.attempt > 1 ? ' · ' + daily.attempt + '번째 시도' : '');
+    $('#settle-kicker').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
     const t = $('#settle-title');
     t.textContent = done ? '완주' : canResume ? '시간 초과' : reached + '단계 통과';
     t.className = 'verdict sm ' + (done ? 'ok' : canResume ? 'bad' : '');
@@ -925,14 +900,12 @@
     const failSt = set[currentStage() - 1];
     const rows = [
       ['통과', reached + ' / ' + TOTAL + '단계'],
-      ['보스', BOSS_AT.map((b, i) => '<span class="sr-boss' + (reached >= b ? ' on' : '') + '">' + set[b - 1].title + '</span>').join('')],
+      ['보스', BOSS_AT.map((b) => '<span class="sr-boss' + (reached >= b ? ' on' : '') + '">' + set[b - 1].title + '</span>').join('')],
       ['총 시간', fmt(totalTime())],
     ];
-    if (failed) rows.push(['멈춘 곳', (failSt.boss ? failSt.title : '스테이지 ' + failSt.n) + (dayClosed() ? ' · 정답 <b class="sr-ans">' + failSt.key + '</b>' : '')]);
-    if (daily.runResumes) rows.push(['이어하기', daily.runResumes + '회']);
+    if (failed) rows.push(['멈춘 곳', (failSt.boss ? failSt.title : '스테이지 ' + failSt.n) + (daily.final ? ' · 정답 <b class="sr-ans">' + failSt.key + '</b>' : '')]);
+    if (daily.resumes) rows.push(['이어하기', daily.resumes + '번']);
     if (hintsUsed()) rows.push(['힌트', hintsUsed() + ' / ' + MAX_HINTS]);
-    const best = bestRun();
-    if (best && daily.runs.length > 1) rows.push(['오늘 최고', (best.done ? '완주' : best.reached + '단계') + ' · ' + fmt(best.ms) + ' · ' + best.attempt + '번째']);
     $('#settle-rounds').innerHTML = rows.map(([k, v]) => '<li><span class="sr-lv">' + k + '</span><span class="sr-val">' + v + '</span></li>').join('') +
       (Rank ? '<li class="sr-rank"><button type="button" id="settle-rank"><span class="sr-lv">오늘 랭킹</span><span class="sr-val" id="settle-rank-val">불러오는 중…</span></button></li>' : '');
     if (Rank) {
@@ -944,54 +917,87 @@
         v.textContent = b && b.me ? b.me.rank + '위 · ' + b.total + '명 중 ›' : b ? '아직 기록 없음 ›' : '연결 안 됨';
       });
     }
-    $('#settle-next').textContent = dayClosed() || done ? nextDailyText() : '정답은 오늘 다시하기를 다 쓰면 공개돼요.';
-    const pri = $('#settle-primary');
-    const sec = $('#settle-secondary');
-    const ter = $('#settle-tertiary');
-    // 이어하기와 다시하기는 실제로 고를 수 있을 때, 버튼 바로 아래 한 줄로 설명한다.
-    const choice = (btn, cls, title, caption) => {
-      btn.className = cls + (caption ? ' choice' : '');
-      btn.innerHTML = '<span>' + title + '</span>' + (caption ? '<small>' + caption + '</small>' : '');
-    };
-    const RESUME = ['공유하고 이어하기', '결과를 공유하면 멈춘 단계부터 시간을 새로 받아요 · 오늘 1번'];
-    const RETRY = ['1단계부터 다시 · ' + (MAX_RETRIES - daily.retries) + '번 남음', '이번 기록은 남고, 랭킹엔 오늘 가장 좋은 시도가 올라가요'];
-    ter.hidden = true;
-    if (canResume) {
-      choice(pri, 'btn-primary wide', ...RESUME);
-      pri.onclick = async () => {
-        if (!(await shareDaily())) return;
-        daily.resumes++;
-        daily.runResumes++;
-        daily.status = 'between';
-        daily.deadline = null;
-        saveDaily();
-        playDaily();
-      };
-      if (canRetry) {
-        choice(sec, 'btn-ghost', ...RETRY);
-        sec.onclick = retryDaily;
-        ter.hidden = false;
-        ter.textContent = '지도';
-        ter.onclick = openMap;
-      } else {
-        choice(sec, 'btn-text', '오늘은 여기까지');
-        sec.onclick = () => { endRun(); showSettle(); };
-      }
-    } else if (canRetry) {
-      choice(pri, 'btn-primary wide', ...RETRY);
-      pri.onclick = retryDaily;
-      choice(sec, 'btn-text', '결과 공유');
-      sec.onclick = () => shareDaily();
-      ter.hidden = false;
-      ter.textContent = '지도';
-      ter.onclick = openMap;
-    } else {
+    $('#settle-next').textContent = daily.final || done ? nextDailyText() : '정답은 오늘 도전을 마치면 공개돼요.';
+    if (canResume) renderResume();
+    else {
+      const pri = $('#settle-primary');
+      const sec = $('#settle-secondary');
       choice(pri, 'btn-primary wide', '결과 공유');
       pri.onclick = () => shareDaily();
       choice(sec, 'btn-text', '지도');
       sec.onclick = openMap;
+      $('#settle-tertiary').hidden = true;
     }
     setTimeout(() => openSheet('#settle', true), 200);
+  }
+
+  function choice(btn, cls, title, caption) {
+    btn.className = cls + (caption ? ' choice' : '');
+    btn.disabled = false;
+    btn.innerHTML = '<span>' + title + '</span>' + (caption ? '<small>' + caption + '</small>' : '');
+  }
+
+  // 시간 초과 뒤: 링크를 보내고, 그 링크로 다른 사람이 실제로 들어와야 이어하기가 열린다.
+  function renderResume() {
+    const inv = daily.invite;
+    const pri = $('#settle-primary');
+    const sec = $('#settle-secondary');
+    const ter = $('#settle-tertiary');
+    if (inv && inv.unlocked) {
+      choice(pri, 'btn-primary wide go', '이어하기', (inv.by ? inv.by + '님이' : '친구가') + ' 링크로 들어와서 열렸어요');
+      pri.onclick = resumeDaily;
+      $('#settle-next').textContent = '멈춘 단계부터 시간을 새로 받아요. 오늘 한 번뿐이에요.';
+    } else {
+      choice(pri, 'btn-primary wide', inv ? '링크 다시 보내기' : '친구에게 링크 보내기', '보낸 링크로 친구가 들어오면 이어하기가 열려요 · 오늘 1번');
+      pri.onclick = sendInvite;
+      $('#settle-next').innerHTML = inv ? '<span class="waiting">친구가 링크로 들어오길 기다리는 중</span>' : '정답은 오늘 도전을 마치면 공개돼요.';
+      if (inv) startInvitePoll();
+    }
+    choice(sec, 'btn-text', '오늘은 여기까지');
+    sec.onclick = () => { stopInvitePoll(); endRun(); showSettle(); };
+    ter.hidden = false;
+    ter.textContent = '지도';
+    ter.onclick = () => { stopInvitePoll(); openMap(); };
+  }
+
+  async function sendInvite() {
+    const pri = $('#settle-primary');
+    pri.disabled = true;
+    const r = await rankSend('invite', { stage: currentStage() });
+    pri.disabled = false;
+    if (!r || !r.code) { toast('인터넷에 연결되어 있어야 링크를 만들 수 있어요', 'bad'); return; }
+    daily.invite = { code: r.code, unlocked: !!r.unlocked, by: null };
+    saveDaily();
+    if (!r.unlocked) await shareDaily(r.code);
+    renderResume();
+  }
+
+  function stopInvitePoll() { clearInterval(state.invitePoll); state.invitePoll = null; }
+  function startInvitePoll() {
+    if (state.invitePoll) return;
+    state.invitePoll = setInterval(checkInvite, 4000);
+    checkInvite();
+  }
+  async function checkInvite() {
+    if (!$('#settle').classList.contains('open') || daily.final) { stopInvitePoll(); return; }
+    const r = await rankSend('invite_status');
+    const inv = r && r.invite;
+    if (!inv || !inv.unlocked || (daily.invite && daily.invite.unlocked)) return;
+    daily.invite = { code: inv.code, unlocked: true, by: inv.by };
+    saveDaily();
+    stopInvitePoll();
+    toast((inv.by || '친구') + '님이 들어왔어요! 이어서 할 수 있어요', 'ok');
+    if (navigator.vibrate) navigator.vibrate(60);
+    renderResume();
+  }
+
+  function resumeDaily() {
+    stopInvitePoll();
+    daily.resumes++;
+    daily.status = 'between';
+    daily.deadline = null;
+    saveDaily();
+    playDaily();
   }
 
   /* ---------- 오늘의 랭킹 ---------- */
@@ -1060,7 +1066,8 @@
     return '다음 도전까지 ' + (h ? h + '시간 ' : '') + m + '분';
   }
 
-  async function shareDaily() {
+  // code가 있으면 이어하기 초대 링크로 보낸다.
+  async function shareDaily(code) {
     const reached = clearedCount();
     const blocks = Array.from({ length: TOTAL }, (_, i) => {
       const n = i + 1;
@@ -1071,13 +1078,14 @@
     const rowsTxt = [blocks.slice(0, 10).join(''), blocks.slice(10).join('')];
     const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'),
       (daily.status === 'done' ? '완주! ' : reached + '/20 ') + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' · ' + fmt(totalTime()),
-      ...rowsTxt, [daily.attempt > 1 ? daily.attempt + '번째 시도' : '', daily.runResumes ? '이어하기 ' + daily.runResumes + '회' : ''].filter(Boolean).join(' · '),
+      ...rowsTxt, daily.resumes ? '이어하기 ' + daily.resumes + '번' : '',
       state.rank && state.rank.day === daily.date && state.rank.me ? '🏆 오늘 ' + state.rank.me.rank + '위 (상위 ' + pct(state.rank.me.rank, state.rank.total) + '%)' : '',
-      'https://jamojump.app'].filter(Boolean).join('\n');
+      code ? '\n' + (currentStage()) + '단계에서 멈췄어요. 이 링크로 들어와 주면 이어서 할 수 있어요 🙏' : '',
+      code ? 'https://jamojump.app/?r=' + code : 'https://jamojump.app'].filter(Boolean).join('\n');
     try {
       if (navigator.share) { await navigator.share({ text }); return true; }
     } catch (e) {
-      if (e && e.name === 'AbortError') return false; // 공유 창을 닫은 경우만 이어하기를 막는다
+      if (e && e.name === 'AbortError') return false;
     }
     if (await copyText(text)) toast('결과를 복사했어요. 친구에게 붙여 넣어 주세요', 'ok');
     else toast('복사가 막혀 있어요. 화면을 캡처해 공유해 주세요');
@@ -1126,8 +1134,7 @@
     else if (daily.status === 'between') badge = reached + '단계 통과';
     else if (daily.status === 'failed' && !daily.final) { badge = '시간 초과'; tone = 'warn'; }
     else if (daily.final) {
-      const best = bestRun() || { done: daily.status === 'done', reached, stars: dailyStars() };
-      badge = (dayClosed() ? '' : '최고 ') + (best.done ? '완주' : best.reached + '단계') + ' · ★' + best.stars;
+      badge = (daily.status === 'done' ? '완주' : reached + '단계') + ' · ★' + dailyStars();
       tone = 'done';
     }
     const b = $('#daily-badge');
@@ -1332,6 +1339,17 @@
 
   /* ---------- 시작 ---------- */
   let routed = false;
+  // ?r=코드 로 들어오면, 링크를 보낸 사람의 이어하기를 열어 준다.
+  const inviteCode = new URLSearchParams(location.search).get('r');
+  if (inviteCode) {
+    history.replaceState(null, '', location.pathname);
+    if (Rank) {
+      Rank.call('visit', { code: inviteCode })
+        .then((r) => { if (r && r.ok && !r.already) setTimeout(() => toast(r.owner + '님의 이어하기를 열어 줬어요 🙌', 'ok'), 2300); })
+        .catch(() => {});
+    }
+  }
+
   function route() {
     if (routed) return;
     routed = true;
