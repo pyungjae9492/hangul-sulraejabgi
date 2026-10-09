@@ -3,6 +3,7 @@
  *
  * 영상에서 확인한 규칙
  * - 글자 하나마다 능력 두 개 중 하나를 고른다.
+ * - 어떤 능력이든, 지금 서 있는 칸의 자음이 들어 있는 글자만 쓸 수 있다. ("같은 글자의 ...")
  *   · 자음 능력: 글자를 이루는 서로 다른 자음 칸으로 이동 (초성 <-> 받침, 양방향)
  *   · 모음 능력: 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동
  * - 모음이 ㅡ, ㅣ, ㅢ 이면 모음 능력 없음. 받침이 없거나 자음이 한 종류뿐이면 자음 능력 없음.
@@ -54,7 +55,8 @@
     const { cho, jung, jong } = decompose(ch);
     const set = [baseOf(cho)];
     if (jong) for (const c of COMPOUND[jong] || [baseOf(jong)]) if (!set.includes(c)) set.push(c);
-    return { consonants: set.length >= 2 ? set : null, vector: VOWEL_MOVES[jung] || null };
+    // letters: 글자를 이루는 자음 전체. 이 중 하나를 밟고 있어야 그 글자를 쓸 수 있다.
+    return { letters: set, consonants: set.length >= 2 ? set : null, vector: VOWEL_MOVES[jung] || null };
   }
 
   const key = (x, y) => x + ',' + y;
@@ -74,12 +76,14 @@
   function movesFrom(idx, pos, ability, onlyVowel) {
     const out = [];
     const here = idx.cells.get(key(pos[0], pos[1]));
+    // 밟고 있는 칸의 자음이 이 글자에 없으면 이 글자의 능력은 하나도 쓸 수 없다.
+    if (!here || !here.c || !ability.letters.includes(here.c)) return out;
     if (ability.vector) {
       const nx = pos[0] + ability.vector[0];
       const ny = pos[1] + ability.vector[1];
       if (idx.cells.has(key(nx, ny))) out.push({ type: 'vowel', to: [nx, ny], vector: ability.vector });
     }
-    if (!onlyVowel && ability.consonants && here && here.c && ability.consonants.includes(here.c)) {
+    if (!onlyVowel && ability.consonants) {
       for (const c of ability.consonants) {
         if (c === here.c) continue;
         const t = idx.byConsonant.get(c);

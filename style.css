@@ -320,6 +320,7 @@ b { font-weight: 800; }
 .ab-hint { font-size: 13px; color: var(--dim); }
 .ab { display: flex; align-items: center; gap: 5px; animation: pop .18s ease-out; }
 .ab b { font-family: var(--display); font-weight: 400; font-size: 20px; margin-right: 2px; }
+.ab.here b { color: var(--mint); }
 .chip { padding: 4px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }
 .chip.o { color: var(--orange); background: rgba(255, 138, 61, .14); }
 .chip.p { color: var(--purple-text); background: rgba(155, 107, 255, .16); }
@@ -478,6 +479,8 @@ b { font-weight: 800; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .sheet-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 26px; }
 .rules-lead, .rules-text { margin: 0 0 16px; font-size: 15px; line-height: 1.65; color: var(--soft); }
+.rules-key { margin: 0 0 8px; padding: 12px 14px; border-radius: 14px; background: #1F2128; font-size: 14px; line-height: 1.6; color: var(--soft); }
+.rules-key b { color: var(--text); }
 #rules-board { margin: 10px 0 22px; }
 .rule-cards { display: grid; gap: 10px; margin-bottom: 18px; }
 .rule-card { padding: 16px; border-radius: 18px; background: #1F2128; border-left: 3px solid; }

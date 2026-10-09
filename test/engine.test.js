@@ -27,11 +27,25 @@ test('영상 예시: 경축은 오답', () => {
 });
 
 test('글자별 능력: 숨/연/질/꼭/바 (영상 설명)', () => {
-  assert.deepEqual(H.abilitiesOf('숨'), { consonants: ['ㅅ', 'ㅁ'], vector: [0, 1] });
-  assert.deepEqual(H.abilitiesOf('연'), { consonants: ['ㅇ', 'ㄴ'], vector: [-2, 0] });
-  assert.deepEqual(H.abilitiesOf('질'), { consonants: ['ㅈ', 'ㄹ'], vector: null });
-  assert.deepEqual(H.abilitiesOf('꼭'), { consonants: null, vector: [0, -1] });
-  assert.deepEqual(H.abilitiesOf('바'), { consonants: null, vector: [1, 0] });
+  assert.deepEqual(H.abilitiesOf('숨'), { letters: ['ㅅ', 'ㅁ'], consonants: ['ㅅ', 'ㅁ'], vector: [0, 1] });
+  assert.deepEqual(H.abilitiesOf('연'), { letters: ['ㅇ', 'ㄴ'], consonants: ['ㅇ', 'ㄴ'], vector: [-2, 0] });
+  assert.deepEqual(H.abilitiesOf('질'), { letters: ['ㅈ', 'ㄹ'], consonants: ['ㅈ', 'ㄹ'], vector: null });
+  assert.deepEqual(H.abilitiesOf('꼭'), { letters: ['ㄱ'], consonants: null, vector: [0, -1] });
+  assert.deepEqual(H.abilitiesOf('바'), { letters: ['ㅂ'], consonants: null, vector: [1, 0] });
+});
+
+test('밟고 있는 칸의 자음이 없는 글자는 능력을 쓸 수 없다 (부엌 오판정 회귀)', () => {
+  // 출발 ㅇ(0,0), ㅌ(1,0), ㅋ(2,1), 도착(2,2)
+  const board = {
+    tiles: [{ x: 0, y: 0, c: 'ㅇ' }, { x: 1, y: 0, c: 'ㅌ' }, { x: 2, y: 1, c: 'ㅋ' }, { x: 2, y: 2, c: null }],
+    start: [0, 0], goal: [2, 2], cond: 'none',
+  };
+  // 엌으로 ㅇ→ㅋ 까지는 되지만, ㅋ 칸에서 부(ㅂ)는 쓸 수 없다.
+  assert.equal(H.findPath(board, '부엌'), null);
+  assert.equal(H.findPath(board, '콩쥐'), null);
+  assert.equal(H.findPath(board, '쿵후'), null);
+  // ㅋ이 들어 있고 아래로 가는 글자라면 된다: 엌(ㅇ→ㅋ) + 쿠(↓1)
+  assert.ok(H.findPath(board, '쿠엌'));
 });
 
 test('복합모음은 대각선 이동, 겹받침은 구성 자음 모두 사용', () => {
@@ -52,14 +66,14 @@ test('추가 조건: 모음 능력만 사용', () => {
 });
 
 test('추가 조건: 모든 칸을 거쳐야 한다', () => {
-  // ㄱ(0,0) 시작 -> 바(오른쪽1) -> ㅁ(1,0)에서 마(오른쪽1) -> 도착(2,0)
+  // ㄱ(0,0) 시작 -> 가(오른쪽1) -> ㅁ(1,0)에서 마(오른쪽1) -> 도착(2,0)
   const board = {
     tiles: [{ x: 0, y: 0, c: 'ㄱ' }, { x: 1, y: 0, c: 'ㅁ' }, { x: 2, y: 0, c: null }],
     start: [0, 0], goal: [2, 0], cond: 'all',
   };
-  assert.ok(H.findPath(board, '바마'));
+  assert.ok(H.findPath(board, '가마'));
   const board2 = { ...board, tiles: [...board.tiles, { x: 0, y: 1, c: 'ㅅ' }] };
-  assert.equal(H.findPath(board2, '바마'), null);
+  assert.equal(H.findPath(board2, '가마'), null);
 });
 
 test('생성된 문제는 항상 정답이 존재하고 검증과 일치한다', () => {
@@ -86,6 +100,13 @@ test('모든 경로 단계가 보드 위에서 실제로 성립한다 (엔진과
       for (const s of a.path) {
         assert.deepEqual(s.from, pos);
         const ab = H.abilitiesOf(a.word[s.index]);
+        // 밟고 있는 칸의 자음이 그 글자의 초성이나 받침(겹받침 포함)에 들어 있어야 한다.
+        const d = H.decompose(a.word[s.index]);
+        const standing = at(pos[0], pos[1]).c;
+        const base = { 'ㄲ': 'ㄱ', 'ㄸ': 'ㄷ', 'ㅃ': 'ㅂ', 'ㅆ': 'ㅅ', 'ㅉ': 'ㅈ' };
+        const split = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ' };
+        const parts = [d.cho, ...[...(split[d.jong] || d.jong)]].map((c) => base[c] || c);
+        assert.ok(parts.includes(standing), a.word + ': ' + standing + ' 칸에서 ' + a.word[s.index] + ' 사용 불가');
         if (s.type === 'consonant') {
           assert.notEqual(p.board.cond, 'vowel');
           assert.ok(ab.consonants && ab.consonants.includes(at(pos[0], pos[1]).c), a.word + ' 출발 자음');

@@ -279,13 +279,15 @@
       return;
     }
     const onlyVowel = state.puzzle && state.puzzle.board.cond === 'vowel';
+    const startC = state.puzzle ? state.idx.cells.get(state.puzzle.board.start.join(',')).c : null;
     box.innerHTML = sy.map((ch) => {
       const a = H.abilitiesOf(ch);
       const c = a.consonants
         ? '<span class="chip o' + (onlyVowel ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>'
         : '<span class="chip off">자음 없음</span>';
       const v = a.vector ? '<span class="chip p">' + arrowGlyph(a.vector) + '</span>' : '<span class="chip off">모음 없음</span>';
-      return '<div class="ab"><b>' + ch + '</b>' + c + v + '</div>';
+      const fromStart = startC && a.letters.includes(startC);
+      return '<div class="ab' + (fromStart ? ' here' : '') + '"' + (fromStart ? ' title="출발 칸 ' + startC + '에서 쓸 수 있어요"' : '') + '><b>' + ch + '</b>' + c + v + '</div>';
     }).join('');
   }
 

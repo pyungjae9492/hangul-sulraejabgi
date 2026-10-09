@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
   <div id="app">
@@ -124,16 +124,17 @@
       </button>
     </div>
     <p class="rules-lead">게임판의 <b class="t-mint">출발</b> 칸에서 <b class="t-coral">도착</b> 칸까지 갈 수 있는 두 글자 코드네임을 먼저 찾으세요. 글자마다 능력 하나를 골라 한 번씩 쓰고, 순서는 자유예요.</p>
+    <p class="rules-key">한 글자는 <b>지금 밟고 있는 칸의 자음이 그 글자에 들어 있을 때만</b> 쓸 수 있어요. 자음 능력과 모음 능력 모두 같아요.</p>
     <div id="rules-board" class="board-host demo"></div>
     <div class="rule-cards">
       <div class="rule-card o">
         <h3>자음 능력</h3>
-        <p>지금 칸의 자음이 글자에 들어 있으면, 그 글자의 다른 자음 칸으로 이동해요. <b>칙</b>은 ㅊ과 ㄱ 사이를 오갈 수 있어요.</p>
+        <p>밟고 있는 자음에서 같은 글자의 다른 자음 칸으로 이동해요. ㅊ 칸에서 <b>칙</b>을 쓰면 ㄱ 칸으로 가요.</p>
         <p class="fine">받침이 없거나 자음이 한 종류뿐인 글자(꼭)는 쓸 수 없어요. 겹받침은 구성 자음을 모두 써요.</p>
       </div>
       <div class="rule-card p">
         <h3>모음 능력</h3>
-        <p>모음에서 튀어나온 획의 방향으로, 획 수만큼 이동해요. <b>규</b>의 ㅠ는 아래로 2칸이에요.</p>
+        <p>밟고 있는 자음이 든 글자의 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동해요. ㄱ 칸에서 <b>규</b>를 쓰면 ㅠ를 따라 아래로 2칸 가요.</p>
         <p class="fine">ㅡ, ㅣ, ㅢ는 쓸 수 없어요. 이동할 자리에 칸이 없어도 쓸 수 없어요.</p>
         <div id="vowel-grid" class="vowel-grid"></div>
       </div>
@@ -144,9 +145,8 @@
     <p class="rules-text">정답이면 승점 1점. 오답이면 30초 동안 제시할 수 없어요. 승점 2점을 먼저 딴 두 명이 생존하고, 남은 한 명이 탈락해요. 사전에 없는 단어는 오답으로 치지 않아요.</p>
   </section>
 
-  <script src="words.js?v=4"></script>
-  <script src="engine.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="words.js?v=5"></script>
+  <script src="engine.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
-
