@@ -188,3 +188,29 @@ test('실시간 생성기: 난이도별로 규칙대로 풀리는 문제를 만�
   const b = G.generate(ctx, 'hard', G.mulberry32(G.hashSeed('daily:2026-10-09:2')));
   assert.deepEqual(a, b);
 });
+
+test('오늘의 도전: 화면과 랭킹 서버가 같은 파일(daily.js)로 같은 20문제를 만든다', () => {
+  global.window = global.window || {};
+  require('../fam.js');
+  require('../bosses.js');
+  const G = require('../gen.js');
+  const D = require('../daily.js');
+  const a = D.buildSet('2026-10-09', G.makeContext(window.FAM), window.BOSSES);
+  const b = D.buildSet('2026-10-09', G.makeContext(window.FAM), window.BOSSES);
+  assert.equal(a.length, D.TOTAL);
+  assert.deepEqual(a.map((s) => s.key), b.map((s) => s.key));
+  assert.deepEqual(a.filter((s) => s.boss).map((s) => s.n), D.BOSS_AT);
+  assert.equal(new Set(a.map((s) => s.key)).size, D.TOTAL);
+  for (const s of a) assert.ok(H.findPath(s.board, s.key), s.n + ' ' + s.key);
+  assert.deepEqual([D.MAX_HINTS, D.MAX_RESUMES, D.MAX_RETRIES], [3, 1, 5]);
+});
+
+test('랭킹 서버용 game.js가 지금 게임 코드와 같다 (바꿨으면 node scripts/build-edge.js 후 재배포)', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const file = path.join(__dirname, '../supabase/functions/daily/game.js');
+  const before = fs.readFileSync(file, 'utf8');
+  require('child_process').execFileSync('node', [path.join(__dirname, '../scripts/build-edge.js')]);
+  assert.equal(fs.readFileSync(file, 'utf8'), before);
+});
+
