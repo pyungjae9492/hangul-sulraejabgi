@@ -1573,7 +1573,7 @@
     if (row) pickLevel(row.dataset.level);
   });
   $('#scrim').addEventListener('click', () => {
-    if ($('#levels').classList.contains('open') || $('#about').classList.contains('open')) closeSheets();
+    if ($('#levels').classList.contains('open')) closeSheets();
     else if ($('#rank').classList.contains('open')) closeRank();
   });
   function closeRank() {
@@ -1590,12 +1590,6 @@
   });
   $('#btn-hint').addEventListener('click', onHint);
   $('#btn-skip').addEventListener('click', finishTutorial);
-  $('#btn-about').addEventListener('click', () => openSheet('#about', true));
-  // 만든 사람 시트의 스레드 링크. 비어 있으면 팔로우 버튼을 숨긴다.
-  const THREADS_URL = 'https://www.threads.com/@wild.tokenflexer';
-  if (THREADS_URL) $('#about-threads').href = THREADS_URL;
-  else $('.about-cta').hidden = true;
-  $('#about-close').addEventListener('click', closeSheets);
   $('#dock').addEventListener('submit', onSubmit);
   $('#answer').addEventListener('input', renderAbilities);
 
@@ -1675,14 +1669,25 @@
     });
     $('#board').addEventListener('click', closeKeypad);
     const pad = $('#keypad');
+    // 키 사이 틈이나 가장자리를 눌러도 가장 가까운 키가 눌리게 한다.
+    const nearest = (x, y) => {
+      let best = null, bd = Infinity;
+      pad.querySelectorAll('.kp-key').forEach((k) => {
+        const r = k.getBoundingClientRect();
+        const dx = Math.max(r.left - x, 0, x - r.right), dy = Math.max(r.top - y, 0, y - r.bottom);
+        const d = dx * dx + dy * dy;
+        if (d < bd) { bd = d; best = k; }
+      });
+      return bd <= 24 * 24 ? best : null;
+    };
     pad.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest('.kp-key');
+      const b = e.target.closest('.kp-key') || nearest(e.clientX, e.clientY);
       if (!b) return;
       e.preventDefault();
       b.classList.add('down');
       pressKey(b.dataset.k);
     });
-    const up = (e) => { const b = e.target.closest && e.target.closest('.kp-key'); if (b) b.classList.remove('down'); };
+    const up = () => pad.querySelectorAll('.kp-key.down').forEach((b) => b.classList.remove('down'));
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => pad.addEventListener(t, up));
     pad.addEventListener('pointerout', up);
     window.addEventListener('resize', () => { const h = $('#board'); if (h.dataset.span && !h.classList.contains('anim')) sizeBoard(h); });

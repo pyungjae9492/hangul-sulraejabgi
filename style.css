@@ -827,13 +827,13 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
   touch-action: manipulation;
   -webkit-touch-callout: none;
 }
-.kp-row { display: grid; grid-template-columns: repeat(20, 1fr); gap: 5px; }
+.kp-row { display: grid; grid-template-columns: repeat(20, 1fr); gap: 4px; }
 .kp-key {
   grid-column: span 2;
-  height: 44px;
+  height: 52px;
   display: grid; place-items: center;
   border-radius: 9px;
-  font-family: var(--display); font-size: 20px; line-height: 1; color: var(--text);
+  font-family: var(--display); font-size: 22px; line-height: 1; color: var(--text);
   background: linear-gradient(180deg, #3A3D48, #30323B);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 2px 0 #0A0B0E;
   transition: transform .06s, background .06s;
@@ -991,3 +991,10 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 
 #tour.noboard .tour-vis > .rule-demo { transform: none; max-width: 340px; }
 .rule-demo .rule { font-size: 15px; padding: 8px 14px; }
+
+/* 키패드를 화면 양옆 끝까지 넓혀 키를 크게 */
+.kp-wrap { margin: 0 -12px; }
+.keypad { gap: 8px; padding: 12px 0 4px; }
+.maker-btn { display: inline-grid; place-items: center; text-decoration: none; }
+.tour-credit { margin: 0 0 8px; text-align: center; font-size: 12px; color: var(--dim); }
+.tour-credit a { color: var(--muted); }
