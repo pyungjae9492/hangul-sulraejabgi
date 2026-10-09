@@ -538,25 +538,146 @@ button.card:active { transform: scale(.985); }
 .card-top, .card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .card-kicker { font-family: var(--display); font-size: 24px; line-height: 1.1; }
 .card-meta { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-.card.daily { padding: 20px; background: linear-gradient(160deg, #2C1A20, #1B1317 55%, #17181D); border-color: rgba(255, 90, 95, .35); }
-.daily-rounds { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; align-items: center; }
-.daily-rounds i { height: 10px; border-radius: 3px; background: rgba(255, 255, 255, .08); }
-.daily-rounds i.boss { height: 18px; background: rgba(255, 90, 95, .22); }
-.daily-rounds i.done { background: var(--mint); }
-.daily-rounds i.boss.done { background: var(--gold); }
-.daily-rounds i.fail { background: var(--coral); }
-.daily-rounds i.now { background: var(--text); }
-.card-note { font-size: 13px; font-weight: 600; color: var(--soft); }
-.card-cta { flex: none; padding: 10px 18px; border-radius: 999px; background: var(--coral); color: #fff; font-size: 15px; font-weight: 800; }
-.card.daily.finished .card-cta { background: var(--tile); }
-.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 16px; background: var(--ink); border: 1px solid var(--line); }
-.seg button { padding: 10px 6px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--muted); transition: background .2s, color .2s; }
-.seg button[aria-checked="true"] { background: var(--tile); color: var(--text); }
-.card.endless .btn-primary { height: 52px; }
 .card.climb { grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 16px 18px; }
 .card.climb .card-kicker { font-size: 20px; }
 .chev { font-size: 26px; line-height: 1; opacity: .5; }
-#home .map-credit { margin-top: auto; padding-top: 10px; }
+
+/* 처음 화면 모드 카드: 제목, 한 줄 설명, 배경 그림만 */
+#home { gap: 14px; }
+.mode-card {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 210px;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 22px;
+  overflow: hidden;
+  isolation: isolate;
+  text-align: left;
+  border-radius: 28px;
+  border: 1px solid var(--line);
+  transition: transform .14s ease;
+}
+.mode-card:active { transform: scale(.98); }
+.mode-card::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(180deg, transparent 38%, var(--fade) 88%);
+}
+.mode-card.daily {
+  --fade: rgba(28, 16, 20, .96);
+  background: radial-gradient(90% 80% at 85% 10%, rgba(255, 90, 95, .3), transparent 65%), linear-gradient(165deg, #2A171C, #1A1216 70%);
+  border-color: rgba(255, 90, 95, .3);
+}
+.mode-card.endless {
+  --fade: rgba(20, 18, 30, .96);
+  background: radial-gradient(90% 80% at 80% 0%, rgba(155, 107, 255, .26), transparent 65%), linear-gradient(165deg, #1C1A28, #151520 70%);
+  border-color: rgba(155, 107, 255, .26);
+}
+.mc-text { position: relative; z-index: 2; display: grid; gap: 7px; }
+.mc-title { font-family: var(--display); font-weight: 400; font-size: 34px; line-height: 1; }
+.mc-line { font-size: 15px; font-weight: 600; color: var(--soft); }
+.mc-badge {
+  position: absolute; z-index: 2; top: 18px; left: 18px;
+  padding: 6px 11px; border-radius: 999px;
+  font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: var(--text); background: rgba(15, 16, 20, .72); border: 1px solid rgba(255, 255, 255, .1);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.mc-badge.live { color: var(--mint); }
+.mc-badge.warn { color: var(--coral); }
+.mc-badge.done { color: var(--gold); }
+.mc-art { position: absolute; z-index: 0; pointer-events: none; }
+.mc-art i {
+  position: absolute;
+  display: grid; place-items: center;
+  width: 58px; height: 58px; border-radius: 15px;
+  font-style: normal; font-family: var(--display); font-size: 26px; color: var(--soft);
+  background: linear-gradient(180deg, var(--tile-hi), var(--tile) 70%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 8px 0 var(--side), 0 14px 18px rgba(0, 0, 0, .5);
+}
+.mc-pawn {
+  position: absolute; z-index: 3; width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFF6D8 0 14%, var(--gold) 15% 58%, #D99A1E 100%);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .55), inset 0 -3px 0 rgba(0, 0, 0, .18);
+}
+/* 오늘의 도전: 왕관까지 오르는 계단 */
+.stairs { right: 18px; top: 16px; width: 274px; height: 226px; transform-origin: top right; }
+.mode-card { container-type: size; }
+@container (max-height: 320px) { .stairs { transform: scale(.78); } }
+@container (max-height: 250px) { .stairs { transform: scale(.62); } }
+.stairs i { left: calc(var(--i) * 54px); bottom: calc(var(--i) * 40px); opacity: calc(.55 + var(--i) * .1); }
+.stairs i:first-child { box-shadow: inset 0 0 0 3px var(--mint), inset 0 1px 0 rgba(255, 255, 255, .1), 0 8px 0 var(--side), 0 14px 18px rgba(0, 0, 0, .5); opacity: 1; }
+.stairs i.top { opacity: 1; color: var(--gold); background: linear-gradient(180deg, #4A3A22, #362A19 70%); box-shadow: inset 0 0 0 3px var(--gold), 0 8px 0 var(--side), 0 0 34px rgba(255, 209, 102, .35); }
+.stairs i.top svg { width: 30px; fill: currentColor; }
+.stairs .mc-pawn { left: 70px; bottom: 104px; animation: stairHop 2.4s cubic-bezier(.45, 0, .55, 1) infinite; }
+@keyframes stairHop {
+  0%, 55%, 100% { transform: translateY(0); }
+  65% { transform: translateY(-16px); }
+  75% { transform: translateY(0) scale(1.08, .9); }
+  82% { transform: translateY(0); }
+}
+/* 무한 모드: 멀리까지 이어지는 판 */
+.field {
+  inset: 0 0 18% 0; perspective: 700px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 2%, #000 34%, #000 62%, transparent 100%), linear-gradient(90deg, transparent 0, #000 45%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent 2%, #000 34%, #000 62%, transparent 100%), linear-gradient(90deg, transparent 0, #000 45%);
+  mask-composite: intersect;
+}
+.field-plane {
+  position: absolute; right: -10px; top: -40px;
+  display: grid; grid-template-columns: repeat(4, 58px); gap: 12px;
+  transform: rotateX(54deg) rotateZ(-34deg);
+  transform-origin: 50% 50%;
+}
+.field-plane i { position: relative; opacity: .7; }
+.field-plane i.start { opacity: 1; color: var(--text); box-shadow: inset 0 0 0 3px var(--mint), inset 0 1px 0 rgba(255, 255, 255, .1), 0 8px 0 var(--side), 0 0 30px rgba(61, 220, 151, .3); }
+.field-plane i.start::after {
+  content: ''; position: absolute; left: 50%; top: -14px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #FFF6D8 0 14%, var(--gold) 15% 58%, #D99A1E 100%);
+  box-shadow: 0 6px 10px rgba(0, 0, 0, .55);
+}
+@media (prefers-reduced-motion: reduce) { .stairs .mc-pawn { animation: none; } }
+
+/* 무한 모드 난이도 */
+.level-btn {
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 6px 8px 6px 14px; border-radius: 999px;
+  font-family: var(--display); font-size: 19px; line-height: 1;
+  background: var(--mat); border: 1px solid var(--line);
+}
+.level-btn svg { width: 20px; height: 20px; fill: none; stroke: var(--muted); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.level-btn:active { background: var(--tile); }
+.levels-title { margin: 0 0 14px; text-align: center; font-family: var(--display); font-weight: 400; font-size: 26px; }
+.level-list { display: grid; gap: 10px; }
+.level-row {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 12px;
+  padding: 16px; border-radius: 18px; text-align: left;
+  background: var(--ink); border: 1.5px solid var(--line);
+}
+.level-row[aria-checked="true"] { border-color: var(--mint); background: rgba(61, 220, 151, .06); }
+.level-row:active { transform: scale(.985); }
+.lv-dots { display: flex; align-items: flex-end; gap: 3px; height: 22px; }
+.lv-dots i { width: 7px; border-radius: 2px; background: var(--c); }
+.lv-dots i:nth-child(1) { height: 9px; }
+.lv-dots i:nth-child(2) { height: 15px; }
+.lv-dots i:nth-child(3) { height: 21px; }
+.level-row.easy { --c: var(--mint); }
+.level-row.normal { --c: var(--gold); }
+.level-row.hard { --c: var(--coral); }
+.lv-text { display: grid; gap: 3px; }
+.lv-text strong { font-family: var(--display); font-weight: 400; font-size: 20px; }
+.lv-text small { font-size: 13px; font-weight: 600; color: var(--muted); }
+.lv-best { font-size: 13px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+
+/* 오늘의 도전 첫 안내 */
+.intro-list { margin: 16px 0 0; padding: 6px 16px; list-style: none; border-radius: 18px; background: var(--ink); border: 1px solid var(--line); }
+.intro-list li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 11px 0; }
+.intro-list li + li { border-top: 1px solid var(--line); }
+.intro-list span { font-size: 17px; line-height: 1.4; }
+.intro-list p { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--soft); }
 
 .map-title { font-family: var(--display); font-weight: 400; font-size: 20px; }
 .node .ntime { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); font-family: var(--body); font-size: 11px; font-weight: 800; color: var(--mint); font-variant-numeric: tabular-nums; }

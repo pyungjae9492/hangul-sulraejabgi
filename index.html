@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=14" />
+  <link rel="stylesheet" href="style.css?v=15" />
 </head>
 <body>
   <div id="app">
@@ -61,23 +61,24 @@
         </button>
       </header>
 
-      <button id="daily-card" class="card daily" type="button">
-        <span class="card-top"><span class="card-kicker">오늘의 도전</span><span id="daily-date" class="card-meta"></span></span>
-        <span id="daily-rounds" class="daily-rounds"></span>
-        <span class="card-bottom"><span id="daily-note" class="card-note"></span><span id="daily-cta" class="card-cta"></span></span>
+      <button id="daily-card" class="mode-card daily" type="button">
+        <span class="mc-art stairs" aria-hidden="true">
+          <i style="--i:0">ㄱ</i><i style="--i:1">ㅁ</i><i style="--i:2">ㅇ</i><i style="--i:3">ㅈ</i>
+          <i class="top" style="--i:4"><svg viewBox="0 0 24 24"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg></i>
+          <b class="mc-pawn"></b>
+        </span>
+        <span id="daily-badge" class="mc-badge" hidden></span>
+        <span class="mc-text"><strong class="mc-title">오늘의 도전</strong><span class="mc-line">매일 새로 열리는 20단계 등반</span></span>
       </button>
 
-      <div class="card endless">
-        <div class="card-top"><span class="card-kicker">무한 모드</span><span id="endless-best" class="card-meta"></span></div>
-        <div class="seg" role="radiogroup" aria-label="무한 모드 난이도">
-          <button type="button" role="radio" data-level="easy" aria-checked="false">쉬움</button>
-          <button type="button" role="radio" data-level="normal" aria-checked="true">보통</button>
-          <button type="button" role="radio" data-level="hard" aria-checked="false">어려움</button>
-        </div>
-        <button id="endless-go" class="btn-primary wide" type="button">시작</button>
-      </div>
-
-      <p class="map-credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요 · <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상</a></p>
+      <button id="endless-card" class="mode-card endless" type="button">
+        <span class="mc-art field" aria-hidden="true">
+          <span class="field-plane">
+            <i>ㄴ</i><i>ㅂ</i><i>ㅅ</i><i>ㅎ</i><i>ㄷ</i><i>ㅎ</i><i>ㅊ</i><i>ㅋ</i><i>ㅌ</i><i class="start">ㄱ</i><i>ㄹ</i><i>ㅁ</i><i>ㅇ</i><i>ㅈ</i><i>ㄱ</i><i>ㅅ</i><i>ㄴ</i><i>ㅂ</i><i>ㅍ</i><i>ㅇ</i>
+          </span>
+        </span>
+        <span class="mc-text"><strong class="mc-title">무한 모드</strong><span class="mc-line">원하는 난이도로 끝없이 풀기</span></span>
+      </button>
     </section>
 
     <section id="map" class="screen" aria-label="스테이지 지도">
@@ -101,6 +102,7 @@
         </button>
         <div class="bar-mid">
           <strong id="stage-title" class="stage-title"></strong>
+          <button id="level-btn" class="level-btn" type="button" hidden aria-label="난이도 바꾸기"><span id="level-label"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg></button>
           <div id="prog" class="prog" aria-hidden="true"></div>
           <span id="bar-sub" class="bar-sub" hidden></span>
           <div id="timer" class="timer" hidden><i id="timer-fill"></i></div>
@@ -145,7 +147,14 @@
     <p id="intro-badge" class="intro-badge"></p>
     <h2 id="intro-title" class="intro-title"></h2>
     <p id="intro-sub" class="intro-sub"></p>
+    <ul id="intro-list" class="intro-list" hidden></ul>
     <div class="sheet-actions"><button id="intro-go" class="btn-primary wide" type="button"></button></div>
+  </section>
+
+  <section id="levels" class="sheet" aria-hidden="true" aria-labelledby="levels-title">
+    <div class="handle" aria-hidden="true"></div>
+    <h2 id="levels-title" class="levels-title">난이도</h2>
+    <div id="level-list" class="level-list" role="radiogroup" aria-labelledby="levels-title"></div>
   </section>
 
   <section id="result" class="sheet" aria-hidden="true" aria-labelledby="res-kicker">
@@ -174,11 +183,11 @@
     </div>
   </section>
 
-  <script src="words.js?v=14"></script>
-  <script src="fam.js?v=14"></script>
-  <script src="engine.js?v=14"></script>
-  <script src="gen.js?v=14"></script>
-  <script src="bosses.js?v=14"></script>
-  <script src="app.js?v=14"></script>
+  <script src="words.js?v=15"></script>
+  <script src="fam.js?v=15"></script>
+  <script src="engine.js?v=15"></script>
+  <script src="gen.js?v=15"></script>
+  <script src="bosses.js?v=15"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>

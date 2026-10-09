@@ -297,6 +297,8 @@
     state.tutWait = null;
     $('#coach').hidden = mode !== 'tutorial';
     $('#prog').hidden = true;
+    $('#stage-title').hidden = mode === 'endless';
+    $('#level-btn').hidden = mode !== 'endless';
     $('#bar-sub').hidden = !(mode === 'endless' || mode === 'daily');
     $('#timer').hidden = mode !== 'daily';
     $('#clock').hidden = mode !== 'daily';
@@ -348,6 +350,7 @@
 
   function showIntro(st, fresh) {
     state.introGo = null;
+    $('#intro-list').hidden = true;
     const badge = $('#intro-badge');
     const rules = activeRules(st.board);
     if (fresh) { progress.seen[fresh] = true; saveProgress(); }
@@ -561,14 +564,47 @@
   function startEndless(level) {
     state.level = level;
     progress.level = level;
+    saveProgress();
     const used = progress.used[level] || (progress.used[level] = []);
     let p = Gen.generate(ctx(), level, Math.random, { avoid: new Set(used) });
     if (!p) p = Gen.generate(ctx(), level, Math.random);
     const rules = loadPuzzle('endless', p.board, p.answers);
     state.endlessKey = p.key;
-    $('#stage-title').textContent = '무한 · ' + LEVEL_LABEL[level];
+    $('#level-label').textContent = LEVEL_LABEL[level];
     renderStreak();
     if (!showRuleIntro(rules) && finePointer) $('#answer').focus();
+  }
+
+  const LEVEL_INFO = {
+    easy: '작은 판, 조건 없이 익숙한 단어',
+    normal: '칸이 늘고 가끔 조건이 붙어요',
+    hard: '외길·고리 판과 까다로운 조건',
+  };
+
+  // 무한 모드 난이도는 게임 안에서 고른다. 처음 들어올 때만 먼저 묻는다.
+  function openLevels() {
+    const cur = state.mode === 'endless' ? state.level : null;
+    $('#level-list').innerHTML = ['easy', 'normal', 'hard'].map((lv) =>
+      '<button type="button" role="radio" class="level-row ' + lv + '" data-level="' + lv + '" aria-checked="' + (lv === cur) + '">' +
+      '<span class="lv-dots" aria-hidden="true">' + '<i></i>'.repeat({ easy: 1, normal: 2, hard: 3 }[lv]) + '</span>' +
+      '<span class="lv-text"><strong>' + LEVEL_LABEL[lv] + '</strong><small>' + LEVEL_INFO[lv] + '</small></span>' +
+      '<span class="lv-best">' + (endlessOf(lv).best ? '최고 ' + endlessOf(lv).best : '') + '</span></button>').join('');
+    openSheet('#levels', true);
+  }
+
+  function pickLevel(lv) {
+    const same = state.mode === 'endless' && state.level === lv;
+    progress.levelPicked = true;
+    closeSheets();
+    if (same) { if (finePointer) $('#answer').focus(); return; }
+    state.streak = 0;
+    startEndless(lv);
+  }
+
+  function openEndless() {
+    if (!progress.levelPicked) { openLevels(); return; }
+    state.streak = 0;
+    startEndless(progress.level || 'normal');
   }
 
   function renderStreak() {
@@ -660,19 +696,35 @@
 
   function openDaily() {
     syncDaily();
+    openMap();
+  }
+
+  // 지도에서 처음 시작을 누를 때 오늘의 도전 규칙을 한 번 길게 안내한다.
+  function startDaily() {
+    syncDaily();
+    if (daily.final || daily.status === 'done' || daily.status === 'failed') { showSettle(); return; }
     if (daily.status === 'ready' && daily.stage === 1 && !progress.dailyIntro) {
       progress.dailyIntro = true;
       saveProgress();
-      state.introGo = openMap;
+      state.introGo = playDaily;
       $('#intro-badge').className = 'intro-badge boss';
       $('#intro-badge').textContent = '오늘의 도전';
       $('#intro-title').textContent = '하루 한 번, 20단계';
-      $('#intro-sub').innerHTML = '단계마다 제한 시간이 있고, 갈수록 어려워져요.<br>5·10·15·20단계는 <b>보스</b>예요. 보스를 넘을 때마다 별 하나.<br>시간 초과면 끝나지만, 결과를 공유하면 <b>하루 두 번</b> 이어서 할 수 있어요.';
-      $('#intro-go').textContent = '지도 보기';
+      $('#intro-sub').textContent = '오늘은 모두가 같은 20단계를 올라요.';
+      const list = $('#intro-list');
+      list.innerHTML = [
+        ['⏱', '<b>단계마다 제한 시간</b>이 있어요. 화면을 나가도 시간은 흘러요.'],
+        ['📈', '위로 갈수록 판이 넓어지고 <b>조건</b>이 붙어요.'],
+        ['👑', '5·10·15·20단계는 <b>보스</b>예요. 넘을 때마다 별 하나, 최대 4개.'],
+        ['🔁', '시간이 다 되면 끝이에요. 결과를 <b>공유하면 하루 두 번</b> 이어서 할 수 있어요.'],
+        ['💡', '오늘의 도전에는 <b>힌트가 없어요</b>. 대신 입력하는 동안 점프 화살표는 보여요.'],
+      ].map(([ic, t]) => '<li><span aria-hidden="true">' + ic + '</span><p>' + t + '</p></li>').join('');
+      list.hidden = false;
+      $('#intro-go').textContent = '1단계 시작';
       openSheet('#intro', true);
       return;
     }
-    openMap();
+    playDaily();
   }
 
   function playDaily() {
@@ -881,25 +933,18 @@
 
   function renderHome() {
     syncDaily();
-    $('#daily-date').textContent = dateLabel(daily.date);
     const reached = clearedCount();
-    $('#daily-rounds').innerHTML = Array.from({ length: TOTAL }, (_, i) => {
-      const n = i + 1;
-      const cls = (BOSS_AT.includes(n) ? 'boss ' : '') + (n <= reached ? 'done' : n === reached + 1 && daily.status === 'failed' ? 'fail' : n === reached + 1 && !daily.final ? 'now' : '');
-      return '<i class="' + cls + '"></i>';
-    }).join('');
-    let note = '20단계 · 보스 4 · 공유하면 2번 이어하기';
-    let cta = '도전';
-    if (daily.status === 'playing') { note = '스테이지 ' + currentStage() + ' 진행 중 · ' + fmt(daily.deadline - Date.now()) + ' 남음'; cta = '이어하기'; }
-    else if (daily.status === 'between') { note = reached + '단계 통과 · ★ ' + dailyStars(); cta = '이어하기'; }
-    else if (daily.status === 'failed' && !daily.final) { note = '시간 초과 · 이어하기 ' + (MAX_RESUMES - daily.resumes) + '회 남음'; cta = '정산'; }
-    else if (daily.final) { note = (daily.status === 'done' ? '완주' : reached + '단계') + ' · ★ ' + dailyStars() + ' · ' + nextDailyText(); cta = '결과'; }
-    $('#daily-note').textContent = note;
-    $('#daily-cta').textContent = cta;
-    $('#daily-card').classList.toggle('finished', daily.final);
-    const lv = progress.level || 'normal';
-    document.querySelectorAll('#home .seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === lv)));
-    $('#endless-best').textContent = '최고 연속 ' + endlessOf(lv).best;
+    // 카드에는 지금 해야 할 일이 있을 때만 작은 상태 하나를 띄운다.
+    let badge = '';
+    let tone = '';
+    if (daily.status === 'playing') { badge = currentStage() + '단계 · ' + fmt(daily.deadline - Date.now()); tone = 'live'; }
+    else if (daily.status === 'between') badge = reached + '단계 통과';
+    else if (daily.status === 'failed' && !daily.final) { badge = '시간 초과'; tone = 'warn'; }
+    else if (daily.final || daily.status === 'done') { badge = (daily.status === 'done' ? '완주' : reached + '단계') + ' · ★' + dailyStars(); tone = 'done'; }
+    const b = $('#daily-badge');
+    b.hidden = !badge;
+    b.textContent = badge;
+    b.className = 'mc-badge' + (tone ? ' ' + tone : '');
     clearInterval(state.homeTick);
     if (daily.status === 'playing') state.homeTick = setInterval(() => { if (state.mode === 'home') renderHome(); else clearInterval(state.homeTick); }, 1000);
   }
@@ -1110,13 +1155,9 @@
 
   $('#tower').addEventListener('click', (e) => {
     const b = e.target.closest('.node');
-    if (b && !b.disabled) playDaily();
+    if (b && !b.disabled) startDaily();
   });
-  $('#map-play').addEventListener('click', () => {
-    syncDaily();
-    if (daily.final || daily.status === 'done' || daily.status === 'failed') showSettle();
-    else playDaily();
-  });
+  $('#map-play').addEventListener('click', startDaily);
   $('#btn-tutorial').addEventListener('click', runTutorial);
   $('#btn-back').addEventListener('click', () => {
     if (state.mode === 'daily') { if (state.open && daily.status === 'playing') toast('타이머는 계속 흘러요'); openMap(); }
@@ -1125,12 +1166,13 @@
   });
   $('#map-back').addEventListener('click', openHome);
   $('#daily-card').addEventListener('click', openDaily);
-  document.querySelectorAll('#home .seg button').forEach((b) => b.addEventListener('click', () => {
-    progress.level = b.dataset.level;
-    saveProgress();
-    renderHome();
-  }));
-  $('#endless-go').addEventListener('click', () => { state.streak = 0; startEndless(progress.level || 'normal'); });
+  $('#endless-card').addEventListener('click', openEndless);
+  $('#level-btn').addEventListener('click', openLevels);
+  $('#level-list').addEventListener('click', (e) => {
+    const row = e.target.closest('.level-row');
+    if (row) pickLevel(row.dataset.level);
+  });
+  $('#scrim').addEventListener('click', () => { if ($('#levels').classList.contains('open')) closeSheets(); });
   $('#settle').addEventListener('click', (e) => e.stopPropagation());
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && state.mode === 'daily') { syncDaily(); if (daily.status === 'failed' && state.open) timeUp(); }
