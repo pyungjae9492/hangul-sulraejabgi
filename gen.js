@@ -55,7 +55,8 @@
     const c = pick(CONS, rng);
     const tiles = [];
     for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) if (!(x === 1 && y === 1)) tiles.push({ x, y, c });
-    const rest = tiles.filter((_, i) => i !== Math.floor(rng() * tiles.length));
+    const gap = Math.floor(rng() * tiles.length);
+    const rest = tiles.filter((_, i) => i !== gap);
     const s = pick(rest, rng);
     let g = pick(rest, rng);
     while (g === s) g = pick(rest, rng);
@@ -65,6 +66,11 @@
   // ---------- 난이도 ----------
   // board(rng): 판과 규칙. keyFam: 대표 정답의 최소 빈도. fam: 친숙한 정답 수 범위. len: 대표 정답 점프 수.
   const LEVELS = {
+    warm: {
+      label: '입문', seconds: 60,
+      board: (rng) => ({ ...scatter(rng, 3, 3, 3, false, false), rules: {} }),
+      keyFam: 300, fam: [3, 20], len: [2, 2],
+    },
     easy: {
       label: '쉬움', seconds: 60,
       board: (rng) => ({ ...scatter(rng, between(3, 4, rng), 3, 3, false, false), rules: {} }),
@@ -74,11 +80,24 @@
       label: '보통', seconds: 90,
       board: (rng) => {
         const r = rng();
-        if (r < 0.3) return { ...scatter(rng, 4, 3, 3, false, false), rules: { vowelOnly: true } };
-        if (r < 0.45) return { ...scatter(rng, 3, 3, 2, false, false), rules: { visitAll: true } };
+        if (r < 0.25) return { ...scatter(rng, 4, 3, 3, false, false), rules: { vowelOnly: true } };
+        if (r < 0.4) return { ...scatter(rng, 3, 3, 2, false, false), rules: { visitAll: true } };
+        if (r < 0.55) return { ...scatter(rng, between(4, 5, rng), 4, 3, false, false), rules: { useBoth: true } };
         return { ...scatter(rng, between(4, 5, rng), 4, 3, rng() < 0.3, rng() < 0.3), rules: {} };
       },
       keyFam: 60, fam: [1, 5], len: [2, 4],
+    },
+    tricky: {
+      label: '까다로움', seconds: 100,
+      board: (rng) => {
+        const r = rng();
+        if (r < 0.2) return { ...scatter(rng, 5, 4, 3, false, false), rules: { vowelOnly: true } };
+        if (r < 0.35) return { ...scatter(rng, 4, 3, 3, rng() < 0.5, false), rules: { visitAll: true } };
+        if (r < 0.5) return { ...scatter(rng, 4, 3, 3, false, false), rules: { visitOnce: true } };
+        if (r < 0.65) return { ...scatter(rng, 5, 4, 3, true, false), rules: { useBoth: true } };
+        return { ...scatter(rng, between(5, 6, rng), 4, 3, true, rng() < 0.5), rules: {} };
+      },
+      keyFam: 50, fam: [1, 3], len: [3, 5],
     },
     hard: {
       label: '어려움', seconds: 120,
@@ -87,8 +106,9 @@
         if (r < 0.12) return { ...line(rng, between(5, 6, rng)), rules: { vowelOnly: true } };
         if (r < 0.24) return { ...ring(rng), rules: { vowelOnly: true } };
         if (r < 0.4) return { ...scatter(rng, between(5, 6, rng), 4, 3, true, true), rules: { consonantOnly: true } };
-        if (r < 0.55) return { ...scatter(rng, 4, 3, 3, rng() < 0.5, false), rules: { visitAll: true } };
-        if (r < 0.7) return { ...scatter(rng, 5, 4, 3, false, false), rules: { vowelOnly: true } };
+        if (r < 0.48) return { ...scatter(rng, 4, 3, 3, rng() < 0.5, false), rules: { visitAll: true } };
+        if (r < 0.58) return { ...scatter(rng, 5, 3, 3, false, false), rules: { visitOnce: true } };
+        if (r < 0.7) return { ...scatter(rng, 5, 4, 3, false, false), rules: { vowelOnly: true, useBoth: true } };
         return { ...scatter(rng, between(5, 6, rng), 4, 4, rng() < 0.5, rng() < 0.5), rules: {} };
       },
       keyFam: 30, fam: [1, 2], len: [3, 7],
@@ -130,5 +150,14 @@
     return null;
   }
 
-  return { LEVELS, mulberry32, hashSeed, makeContext, generate };
+  // 오늘의 도전 20단계에서 보스가 아닌 단계의 난이도
+  function levelForStage(n) {
+    if (n <= 2) return 'warm';
+    if (n <= 4) return 'easy';
+    if (n <= 9) return 'normal';
+    if (n <= 14) return 'tricky';
+    return 'hard';
+  }
+
+  return { LEVELS, mulberry32, hashSeed, makeContext, generate, levelForStage };
 });

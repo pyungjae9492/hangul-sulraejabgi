@@ -39,14 +39,28 @@ test('방송 Round 4: 암탉 (글자를 다시 써서 점프 5번)', () => {
   assert.deepEqual(path.map((s) => s.syllable), ['암', '탉', '탉', '탉', '암']);
 });
 
-test('두 글자를 모두 한 번 이상 써야 한다', () => {
-  // ㄱ ㄴ 깃발 한 줄: 가(→1) 나(→1). 가가는 ㄴ 칸에서 쓸 글자가 없다.
+test('두 글자 모두 쓰기는 조건일 때만 요구된다', () => {
+  // ㄱ ㄴ 깃발 한 줄. 가가는 ㄴ 칸에서 쓸 글자가 없다.
   const b = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, 'ㄴ'), t(2, 0, null)], start: [0, 0], goal: [2, 0] };
   assert.ok(H.findPath(b, '가나'));
   assert.equal(H.findPath(b, '가가'), null);
-  // 갈래: 갈(ㄱ→ㄹ 자음) 래(→1). 갈만으로 깃발에 닿는 판에서 래를 안 쓰면 실패
-  const b2 = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, 'ㄴ')], start: [0, 0], goal: [1, 0] };
-  assert.equal(H.findPath(b2, '가지'), null);
+  // ㄱ 깃발: 가 하나로 닿는 판. 기본 규칙에서는 가지도 정답, useBoth 면 오답
+  const b2 = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, null)], start: [0, 0], goal: [1, 0] };
+  assert.ok(H.findPath(b2, '가지'));
+  assert.equal(H.findPath({ ...b2, rules: { useBoth: true } }, '가지'), null);
+  assert.equal(H.diagnose({ ...b2, rules: { useBoth: true } }, '가지').reason, 'used');
+});
+
+test('모든 칸 밟기(다시 밟기 허용)와 모든 칸 한 번씩만은 다르다', () => {
+  // ㄱ 출발, 오른쪽 ㄴ, 아래 깃발. 간구: 간(→1) ㄱ→ㄴ, 간(자음) ㄴ→ㄱ, 구(↓1) 깃발.
+  // ㄱ 칸을 두 번 밟아야만 모든 칸을 지날 수 있다.
+  const back = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, 'ㄴ'), t(0, 1, null)], start: [0, 0], goal: [0, 1] };
+  assert.ok(H.findPath({ ...back, rules: { visitAll: true } }, '간구'));
+  assert.equal(H.findPath({ ...back, rules: { visitOnce: true } }, '간구'), null);
+  assert.equal(H.diagnose({ ...back, rules: { visitOnce: true } }, '간구').reason, 'visit');
+  // 되돌아가지 않고 한 줄로 지나는 판에서는 둘 다 통과
+  const row = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, 'ㄴ'), t(2, 0, null)], start: [0, 0], goal: [2, 0] };
+  assert.ok(H.findPath({ ...row, rules: { visitOnce: true } }, '가나'));
 });
 
 test('밟고 있는 자음이 없는 글자는 쓸 수 없다 (부엌 회귀)', () => {
@@ -66,8 +80,9 @@ test('글자별 점프: 숨/연/질/꼭/바, 복합모음, 겹받침', () => {
 
 test('제약 조건: 모음만, 모든 칸, 점프 횟수', () => {
   const r4free = { ...ROUND4, rules: {} };
-  // 모음 제약이 없으면 탉의 ㄹ→ㅌ 자음 점프로 지름길이 생겨 점프 4번이면 된다
-  assert.equal(H.findPath(r4free, '암탉').length, 4);
+  // 모음 제약이 없으면 암의 ㅁ→ㅇ 자음 점프로 2번 만에 닿는다. 두 글자 모두 쓰기를 걸면 탉도 써야 해서 4번.
+  assert.equal(H.findPath(r4free, '암탉').length, 2);
+  assert.equal(H.findPath({ ...ROUND4, rules: { useBoth: true } }, '암탉').length, 4);
   assert.equal(H.findPath({ ...ROUND4, rules: { vowelOnly: true, maxJumps: 4 } }, '암탉'), null);
   assert.ok(H.findPath({ ...ROUND4, rules: { vowelOnly: true, exactJumps: 5 } }, '암탉'));
   const all = { tiles: [t(0, 0, 'ㄱ'), t(1, 0, 'ㅁ'), t(2, 0, null)], start: [0, 0], goal: [2, 0], rules: { visitAll: true } };
@@ -81,25 +96,44 @@ test('diagnose: 실패 이유를 구분한다', () => {
   assert.ok(H.diagnose(EXAMPLE, '규칙').ok);
 });
 
-test('20개 스테이지: 모든 정답이 통하고, 5스테이지마다 보스', () => {
+// 오늘의 도전에 나오는 문제들: 보스 풀 전체 + 며칠치 생성 문제
+function dailyProblems() {
   global.window = global.window || {};
-  require('../stages.js');
-  const stages = window.STAGES;
-  assert.equal(stages.length, 20);
-  stages.forEach((st, i) => {
-    assert.equal(st.n, i + 1);
-    assert.equal(st.boss, (i + 1) % 5 === 0);
-    assert.ok(st.answers.length >= 1, 'stage ' + st.n);
-    for (const w of st.answers) assert.ok(H.findPath(st.board, w), st.n + ' ' + w);
-  });
+  require('../bosses.js');
+  require('../fam.js');
+  const G = require('../gen.js');
+  const ctx = G.makeContext(window.FAM);
+  const out = [];
+  for (const n of [5, 10, 15, 20]) window.BOSSES[n].pool.forEach((p, i) => out.push({ n: n + '#' + i, board: p.board, answers: p.answers }));
+  for (const date of ['2026-10-09', '2026-10-10']) {
+    for (let n = 1; n <= 20; n++) {
+      if (n % 5 === 0) continue;
+      const lv = G.levelForStage(n);
+      const p = G.generate(ctx, lv, G.mulberry32(G.hashSeed('daily:' + date + ':' + n)), { maxTries: 20000 });
+      out.push({ n: date + ':' + n, board: p.board, answers: p.answers });
+    }
+  }
+  return out;
+}
+
+test('보스 풀: 슬롯마다 문제가 있고 정답은 1~2개', () => {
+  global.window = global.window || {};
+  require('../bosses.js');
+  for (const n of [5, 10, 15, 20]) {
+    const slot = window.BOSSES[n];
+    assert.ok(slot.pool.length >= 5, n + ' pool');
+    for (const p of slot.pool) {
+      assert.ok(p.answers.length >= 1 && p.answers.length <= 2);
+      for (const w of p.answers) assert.ok(H.findPath(p.board, w), n + ' ' + w);
+    }
+  }
+  assert.equal(window.BOSSES[5].pool[0].key, '암탉');
 });
 
 test('모든 경로 단계가 규칙대로 성립한다 (엔진과 독립 검증)', () => {
-  global.window = global.window || {};
-  require('../stages.js');
   const base = { 'ㄲ': 'ㄱ', 'ㄸ': 'ㄷ', 'ㅃ': 'ㅂ', 'ㅆ': 'ㅅ', 'ㅉ': 'ㅈ' };
   const split = { 'ㄳ': 'ㄱㅅ', 'ㄵ': 'ㄴㅈ', 'ㄶ': 'ㄴㅎ', 'ㄺ': 'ㄹㄱ', 'ㄻ': 'ㄹㅁ', 'ㄼ': 'ㄹㅂ', 'ㄽ': 'ㄹㅅ', 'ㄾ': 'ㄹㅌ', 'ㄿ': 'ㄹㅍ', 'ㅀ': 'ㄹㅎ', 'ㅄ': 'ㅂㅅ' };
-  for (const st of window.STAGES) {
+  for (const st of dailyProblems()) {
     const b = st.board;
     const r = H.rulesOf(b);
     const at = (p) => b.tiles.find((x) => x.x === p[0] && x.y === p[1]);
@@ -127,8 +161,9 @@ test('모든 경로 단계가 규칙대로 성립한다 (엔진과 독립 검증
         seen.add(pos.join());
       });
       assert.deepEqual(pos, b.goal);
-      assert.equal(used.size, 2, st.n + ' ' + w + ' 두 글자 모두 사용');
-      if (r.visitAll) assert.equal(seen.size, b.tiles.length);
+      if (r.useBoth) assert.equal(used.size, 2, st.n + ' ' + w + ' 두 글자 모두 사용');
+      if (r.visitAll || r.visitOnce) assert.equal(seen.size, b.tiles.length);
+      if (r.visitOnce) assert.equal(seen.size, path.length + 1, st.n + ' ' + w + ' 한 번씩만');
       if (r.maxJumps) assert.ok(path.length <= r.maxJumps);
       if (r.exactJumps) assert.equal(path.length, r.exactJumps);
     }

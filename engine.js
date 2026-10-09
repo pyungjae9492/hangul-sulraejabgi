@@ -5,10 +5,10 @@
  * - 글자는 지금 밟고 있는 칸의 자음이 그 글자에 들어 있을 때만 쓸 수 있다.
  *   · 자음 점프: 같은 글자의 다른 자음 칸으로 이동 (초성 <-> 받침, 겹받침은 구성 자음 모두)
  *   · 모음 점프: 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동
- * - 깃발 칸에 닿으면 끝난다. 그때까지 두 글자를 모두 한 번 이상 썼어야 한다.
+ * - 깃발 칸에 닿으면 끝난다.
  * - 같은 자음이 여러 칸에 있을 수 있고, 깃발 칸에도 자음이 있을 수 있다.
- * - 규칙(rules): vowelOnly(모음 점프만), consonantOnly(자음 점프만), visitAll(모든 칸 밟기),
- *   maxJumps(N번 안에), exactJumps(딱 N번)
+ * - 규칙(rules): vowelOnly(모음 점프만), consonantOnly(자음 점프만), useBoth(두 글자 모두 쓰기),
+ *   visitAll(모든 칸 밟기, 다시 밟아도 됨), visitOnce(모든 칸을 한 번씩만), maxJumps(N번 안에), exactJumps(딱 N번)
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -105,7 +105,9 @@
     const n = board.tiles.length;
     const full = n >= 31 ? -1 : (1 << n) - 1;
     const bit = (p) => 1 << idx.order.get(key(p[0], p[1]));
-    const needVisit = rules.visitAll && !relax.visit;
+    const needVisit = (rules.visitAll || rules.visitOnce) && !relax.visit;
+    const noRevisit = rules.visitOnce && !relax.visit;
+    const needBoth = rules.useBoth && !relax.used;
     const exact = !relax.jumps && rules.exactJumps;
     const limit = (!relax.jumps && (rules.exactJumps || rules.maxJumps)) || MAX_JUMPS;
     const start = { pos: board.start, used: 0, vis: bit(board.start), depth: 0, prev: null, step: null };
@@ -117,16 +119,17 @@
       if (s.depth >= limit) continue;
       for (let si = 0; si < 2; si++) {
         for (const m of movesFrom(idx, s.pos, abil[si], rules)) {
+          if (noRevisit && s.vis & bit(m.to)) continue;
           const ns = {
             pos: m.to, used: s.used | (1 << si), vis: s.vis | bit(m.to), depth: s.depth + 1, prev: s,
             step: Object.assign({ syllable: syl[si], index: si, from: s.pos }, m),
           };
           if (same(m.to, board.goal)) {
-            const ok = (relax.used || ns.used === 3) && (!needVisit || ns.vis === full) && (!exact || ns.depth === exact);
+            const ok = (!needBoth || ns.used === 3) && (!needVisit || ns.vis === full) && (!exact || ns.depth === exact);
             if (ok) return { path: trace(ns), all };
             continue; // 깃발에 닿으면 거기서 끝난다
           }
-          const k = m.to[0] + ',' + m.to[1] + '|' + ns.used + '|' + (needVisit ? ns.vis : 0) + '|' + (exact ? ns.depth : 0);
+          const k = m.to[0] + ',' + m.to[1] + '|' + (needBoth ? ns.used : 0) + '|' + (needVisit ? ns.vis : 0) + '|' + (exact ? ns.depth : 0);
           if (seen.has(k)) continue;
           seen.add(k);
           queue.push(ns);

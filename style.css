@@ -192,6 +192,8 @@ b { font-weight: 800; }
 .rule.vowelOnly { color: var(--purple-text); background: rgba(155, 107, 255, .12); border-color: rgba(155, 107, 255, .35); }
 .rule.consonantOnly { color: var(--orange); background: rgba(255, 138, 61, .1); border-color: rgba(255, 138, 61, .35); }
 .rule.visitAll { color: var(--mint); background: rgba(61, 220, 151, .08); border-color: rgba(61, 220, 151, .32); }
+.rule.visitOnce { color: #7FE3FF; background: rgba(127, 227, 255, .08); border-color: rgba(127, 227, 255, .32); }
+.rule.useBoth { color: var(--text); background: rgba(242, 243, 247, .08); border-color: rgba(242, 243, 247, .3); }
 .rule.maxJumps, .rule.exactJumps { color: var(--gold); background: rgba(255, 209, 102, .08); border-color: rgba(255, 209, 102, .3); }
 
 /* ---------- 게임판 ---------- */
@@ -537,15 +539,13 @@ button.card:active { transform: scale(.985); }
 .card-kicker { font-family: var(--display); font-size: 24px; line-height: 1.1; }
 .card-meta { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
 .card.daily { padding: 20px; background: linear-gradient(160deg, #2C1A20, #1B1317 55%, #17181D); border-color: rgba(255, 90, 95, .35); }
-.daily-rounds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.dr { display: grid; gap: 4px; justify-items: center; padding: 12px 6px; border-radius: 16px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); }
-.dr b { font-family: var(--display); font-weight: 400; font-size: 18px; }
-.dr small { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dr.done { border-color: rgba(61, 220, 151, .55); }
-.dr.done small { color: var(--mint); }
-.dr.fail { border-color: rgba(255, 90, 95, .55); }
-.dr.fail small { color: var(--coral); }
-.dr.now { border-color: var(--text); }
+.daily-rounds { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; align-items: center; }
+.daily-rounds i { height: 10px; border-radius: 3px; background: rgba(255, 255, 255, .08); }
+.daily-rounds i.boss { height: 18px; background: rgba(255, 90, 95, .22); }
+.daily-rounds i.done { background: var(--mint); }
+.daily-rounds i.boss.done { background: var(--gold); }
+.daily-rounds i.fail { background: var(--coral); }
+.daily-rounds i.now { background: var(--text); }
 .card-note { font-size: 13px; font-weight: 600; color: var(--soft); }
 .card-cta { flex: none; padding: 10px 18px; border-radius: 999px; background: var(--coral); color: #fff; font-size: 15px; font-weight: 800; }
 .card.daily.finished .card-cta { background: var(--tile); }
@@ -559,6 +559,9 @@ button.card:active { transform: scale(.985); }
 #home .map-credit { margin-top: auto; padding-top: 10px; }
 
 .map-title { font-family: var(--display); font-weight: 400; font-size: 20px; }
+.node .ntime { position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%); font-family: var(--body); font-size: 11px; font-weight: 800; color: var(--mint); font-variant-numeric: tabular-nums; }
+.node.failed { box-shadow: inset 0 0 0 3px var(--coral), inset 0 1px 0 rgba(255,255,255,.09), 0 7px 0 var(--side); }
+.play-btn small.muted { color: var(--muted); }
 
 /* ---------- 상단 바: 무한/도전 ---------- */
 .bar-right { justify-self: end; display: flex; align-items: center; }
@@ -576,6 +579,10 @@ button.card:active { transform: scale(.985); }
 .verdict.bad { color: var(--coral); }
 .settle-rounds { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
 .settle-rounds li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #1F2128; border: 1px solid transparent; }
+.sr-val { font-weight: 800; text-align: right; display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.sr-boss { padding: 3px 8px; border-radius: 999px; font-size: 12px; color: var(--dim); background: var(--mat); }
+.sr-boss.on { color: var(--ink); background: var(--gold); }
+.sr-ans { font-family: var(--display); font-weight: 400; font-size: 17px; }
 .settle-rounds li.done { border-color: rgba(61, 220, 151, .3); }
 .settle-rounds li.fail { border-color: rgba(255, 90, 95, .35); }
 .sr-lv { flex: 1; font-weight: 800; }

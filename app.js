@@ -5,8 +5,8 @@
   const Gen = window.JamoGen;
   const WORDS = window.WORDS || [];
   const WORD_SET = new Set(WORDS.concat(window.WORDS_EXTRA || []));
-  const STAGES = window.STAGES || [];
-  const TOTAL = STAGES.length;
+  const TOTAL = 20;
+  const BOSS_AT = [5, 10, 15, 20];
   const $ = (s) => document.querySelector(s);
 
   const G = 0.14;
@@ -46,19 +46,22 @@
   const RULE_TEXT = {
     vowelOnly: () => '모음 점프만',
     consonantOnly: () => '자음 점프만',
+    useBoth: () => '두 글자 모두 쓰기',
     visitAll: () => '모든 칸 밟기',
+    visitOnce: () => '모든 칸 한 번씩만',
     maxJumps: (n) => n + '번 안에',
     exactJumps: (n) => '딱 ' + n + '번 점프',
   };
   const RULE_INFO = {
     vowelOnly: '이 판에서는 자음 점프를 쓸 수 없어요.',
     consonantOnly: '이 판에서는 모음 점프를 쓸 수 없어요.',
-    visitAll: '깃발에 닿기 전에 모든 칸을 한 번씩은 밟아야 해요.',
+    useBoth: '단어의 두 글자를 모두 한 번 이상 써서 깃발에 닿아야 해요. 한 글자로만 가는 길은 정답이 아니에요.',
+    visitAll: '깃발에 닿기 전에 모든 칸을 밟아야 해요. 같은 칸을 다시 밟아도 괜찮아요.',
+    visitOnce: '모든 칸을 밟되, 어느 칸도 두 번 밟으면 안 돼요. 출발 칸으로 되돌아가는 것도 안 돼요.',
     maxJumps: '정해진 횟수 안에 깃발에 닿아야 해요.',
     exactJumps: '정확히 그 횟수만큼 점프해서 깃발에 닿아야 해요.',
   };
   const activeRules = (board) => Object.entries(H.rulesOf(board)).filter(([, v]) => v);
-  const totalStars = () => Object.values(progress.stars).reduce((a, b) => a + b, 0);
 
   /* ---------- 게임판 ---------- */
   function el(tag, cls, html) {
@@ -79,6 +82,9 @@
     const cols = Math.max(...board.tiles.map((t) => t.x)) + 1;
     const rows = Math.max(...board.tiles.map((t) => t.y)) + 1;
     host.innerHTML = '';
+    // 열이 많은 판(외길 등)도 화면 폭 안에 들어오도록 칸 크기를 열 수에 맞춘다.
+    const span = cols * (1 + G) - G + 0.6;
+    if (!host.classList.contains('demo')) host.style.setProperty('--cell', 'min(80px, calc((min(100vw, 520px) - 40px) / ' + Math.max(5.2, span).toFixed(2) + '))');
     const mat = el('div', 'mat');
     const plane = el('div', 'plane');
     plane.style.setProperty('--cols', cols);
@@ -220,10 +226,10 @@
     f.classList.add('shake');
   }
 
-  /* ---------- 지도 ---------- */
-  const currentStage = () => Math.min(progress.best + 1, TOTAL);
-
+  /* ---------- 지도: 오늘의 20단계 ---------- */
   function renderMap() {
+    syncDaily();
+    const set = todaySet();
     const tower = $('#tower');
     const rowH = 104, pad = 70;
     const height = TOTAL * rowH + pad * 2 - rowH;
@@ -231,40 +237,54 @@
     const cur = currentStage();
     const pts = [];
     let nodes = '';
-    STAGES.forEach((st, i) => {
+    set.forEach((st, i) => {
       const n = i + 1;
       const x = 50 + 27 * Math.sin(i * 0.9);
       const y = height - pad - i * rowH;
       pts.push([x, y]);
-      const cleared = n <= progress.best;
-      const locked = n > cur;
-      const cls = 'node' + (st.boss ? ' boss' : '') + (cleared ? ' cleared' : '') + (n === cur ? ' current' : '') + (locked ? ' locked' : '');
-      const s = progress.stars[n] || 0;
-      nodes += '<button type="button" class="' + cls + '" style="left:' + x.toFixed(2) + '%;top:' + y + 'px" data-n="' + n + '"' + (locked ? ' disabled' : '') +
-        ' aria-label="스테이지 ' + n + (st.boss ? ' 보스' : '') + (cleared ? ' 별 ' + s + '개' : '') + '">' +
+      const cleared = n < cur || daily.status === 'done';
+      const isCur = n === cur && daily.status !== 'done';
+      const failed = isCur && daily.status === 'failed';
+      const playable = isCur && !daily.final;
+      const cls = 'node' + (st.boss ? ' boss' : '') + (cleared ? ' cleared' : '') + (isCur ? ' current' : '') + (failed ? ' failed' : '') + (!cleared && !isCur ? ' locked' : '');
+      const t = daily.times[n];
+      nodes += '<button type="button" class="' + cls + '" style="left:' + x.toFixed(2) + '%;top:' + y + 'px" data-n="' + n + '"' + (playable ? '' : ' disabled') +
+        ' aria-label="스테이지 ' + n + (st.boss ? ' 보스 ' + st.title : '') + '">' +
         (st.boss ? '<span class="crown">' + CROWN + '</span>' : '') +
         '<span class="num">' + n + '</span>' +
-        (cleared ? '<span class="stars">' + [1, 2, 3].map((k) => STAR(k <= s)).join('') + '</span>' : '') +
-        (n === cur ? '<span class="me"><i></i></span>' : '') + '</button>';
+        (cleared && t != null ? '<span class="ntime">' + fmt(t) + '</span>' : '') +
+        (isCur && !daily.final ? '<span class="me"><i></i></span>' : '') + '</button>';
     });
     const d = (list) => list.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1]).join(' ');
-    const doneIdx = Math.max(0, cur - 1);
+    const doneIdx = daily.status === 'done' ? TOTAL - 1 : cur - 1;
     tower.innerHTML =
       '<svg viewBox="0 0 100 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
       '<path d="' + d(pts) + '" fill="none" stroke="#2A2C34" stroke-width="3" stroke-dasharray="2 9" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' +
       (doneIdx > 0 ? '<path d="' + d(pts.slice(0, doneIdx + 1)) + '" fill="none" stroke="#3DDC97" stroke-opacity=".55" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>' : '') +
       '</svg>' + nodes;
-    const st = STAGES[cur - 1];
-    $('#map-play').innerHTML = '<span>스테이지 ' + cur + '</span>' + (st.boss ? '<small>보스 · ' + st.title + '</small>' : '') + ARROW_R;
-    $('#star-total').textContent = '★ ' + totalStars() + ' / ' + TOTAL * 3;
+    $('#map-title').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
+    $('#star-total').textContent = '★ ' + dailyStars() + '/4';
+    const play = $('#map-play');
+    const st = set[Math.min(cur, TOTAL) - 1];
+    if (daily.final || daily.status === 'done') {
+      play.innerHTML = '<span>결과 보기</span><small class="muted">' + nextDailyText() + '</small>' + ARROW_R;
+    } else if (daily.status === 'failed') {
+      play.innerHTML = '<span>시간 초과 · 정산</span><small>이어하기 ' + (MAX_RESUMES - daily.resumes) + '회</small>' + ARROW_R;
+    } else {
+      const sec = daily.status === 'playing' && daily.deadline ? fmt(daily.deadline - Date.now()) + ' 남음' : st.seconds + '초';
+      play.innerHTML = '<span>' + (st.boss ? st.title : '스테이지 ' + cur) + '</span><small' + (st.boss ? '' : ' class="muted"') + '>' + (st.boss ? '보스 · ' : '') + sec + '</small>' + ARROW_R;
+    }
     const wrap = $('#tower-wrap');
-    requestAnimationFrame(() => { wrap.scrollTop = pts[cur - 1][1] - wrap.clientHeight * 0.55; });
+    requestAnimationFrame(() => { wrap.scrollTop = pts[Math.min(cur, TOTAL) - 1][1] - wrap.clientHeight * 0.55; });
+    clearInterval(state.mapTick);
+    if (daily.status === 'playing') state.mapTick = setInterval(() => { if (state.mode === 'map') renderMap(); else clearInterval(state.mapTick); }, 1000);
   }
 
   function openMap() {
     state.token++;
     state.mode = 'map';
     state.open = false;
+    clearInterval(state.clock);
     closeSheets();
     show('map');
     renderMap();
@@ -276,7 +296,7 @@
     $('#dock').hidden = !playing;
     state.tutWait = null;
     $('#coach').hidden = mode !== 'tutorial';
-    $('#prog').hidden = mode !== 'stage';
+    $('#prog').hidden = true;
     $('#bar-sub').hidden = !(mode === 'endless' || mode === 'daily');
     $('#timer').hidden = mode !== 'daily';
     $('#clock').hidden = mode !== 'daily';
@@ -284,13 +304,13 @@
     hint.hidden = mode === 'daily';
     hint.classList.toggle('plain', mode === 'tutorial');
     hint.textContent = mode === 'tutorial' ? '건너뛰기' : '💡 힌트';
-    $('#btn-back').setAttribute('aria-label', mode === 'stage' ? '지도로' : '처음으로');
+    $('#btn-back').setAttribute('aria-label', mode === 'daily' ? '지도로' : '처음으로');
   }
 
   function renderProg(n) {
-    $('#prog').innerHTML = STAGES.map((st, i) => {
+    $('#prog').innerHTML = Array.from({ length: TOTAL }, (_, i) => {
       const k = i + 1;
-      return '<i class="' + (st.boss ? 'boss ' : '') + (k === n ? 'cur' : k <= progress.best ? 'done' : '') + '"></i>';
+      return '<i class="' + (BOSS_AT.includes(k) ? 'boss ' : '') + (k === n ? 'cur' : k < n ? 'done' : '') + '"></i>';
     }).join('');
   }
 
@@ -317,19 +337,6 @@
     setInput(true);
     renderAbilities();
     return rules;
-  }
-
-  function startStage(n) {
-    const st = STAGES[n - 1];
-    state.stage = n;
-    const rules = loadPuzzle('stage', st.board, st.answers);
-    const title = $('#stage-title');
-    title.textContent = st.boss ? st.title : '스테이지 ' + n;
-    title.classList.toggle('boss', st.boss);
-    renderProg(n);
-    const fresh = rules.map(([k]) => k).find((k) => !progress.seen[k]);
-    if (st.boss || fresh) showIntro(st, fresh);
-    else if (finePointer) $('#answer').focus();
   }
 
   function showRuleIntro(rules) {
@@ -463,7 +470,6 @@
     if (path) {
       if (state.mode === 'endless') clearEndless(raw, path, false);
       else if (state.mode === 'daily') clearDaily(raw, path);
-      else clearStage(raw, path, false);
       return;
     }
     await showMiss(raw);
@@ -490,8 +496,8 @@
     const msg = {
       start: '출발 자음 ' + startConsonant() + '이 든 글자가 없어요',
       stuck: here && here.c ? here.c + ' 칸에서 더 갈 곳이 없어요' : '깃발까지 이어지지 않아요',
-      used: '두 글자를 모두 한 번은 써야 해요',
-      visit: '모든 칸을 밟지 못했어요',
+      used: '두 글자를 모두 써야 하는 판이에요',
+      visit: rules.visitOnce ? '모든 칸을 한 번씩만 밟아야 해요' : '모든 칸을 밟지 못했어요',
       jumps: rules.exactJumps ? '딱 ' + rules.exactJumps + '번에 닿아야 해요' : rules.maxJumps + '번 안에 못 가요',
     }[d.reason];
     if (d.reason === 'start') {
@@ -513,24 +519,6 @@
     renderAbilities();
   }
 
-  async function clearStage(word, path, revealed) {
-    state.open = false;
-    state.busy = true;
-    setInput(false);
-    $('#answer').blur();
-    const n = state.stage;
-    const stars = revealed ? 1 : state.hints ? 2 : 3;
-    progress.stars[n] = Math.max(progress.stars[n] || 0, stars);
-    progress.best = Math.max(progress.best, n);
-    saveProgress();
-    renderProg(n);
-    const token = state.token;
-    await playPath(state.plane, state.puzzle.board, path, () => token === state.token);
-    if (token !== state.token) return;
-    await sleep(250);
-    showResult(word, path, stars, revealed);
-  }
-
   function fillResult(word, path) {
     $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
     $('#res-steps').classList.toggle('long', path.length > 3);
@@ -546,30 +534,6 @@
     det.querySelector('p').textContent = others.slice(0, 40).join(' · ');
   }
 
-  function showResult(word, path, stars, revealed) {
-    const st = STAGES[state.stage - 1];
-    const k = $('#res-kicker');
-    k.textContent = revealed ? '정답 공개' : st.boss ? '보스 격파 · ' + st.title : '스테이지 ' + state.stage + ' 클리어';
-    k.className = 'kicker' + (revealed ? ' muted' : st.boss ? ' boss' : '');
-    $('#res-stars').hidden = false;
-    $('#res-stars').innerHTML = [1, 2, 3].map((i) => STAR(i <= stars)).join('');
-    $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
-    $('#res-steps').classList.toggle('long', path.length > 3);
-    $('#res-steps').innerHTML = path.map((s) => {
-      const cons = s.type === 'consonant';
-      return '<span class="step ' + (cons ? 'o' : 'p') + '"><b>' + s.syllable + '</b>' + (cons ? s.fromC + '→' + s.target : arrowGlyph(s.vector)) + '</span>';
-    }).join('');
-    const others = state.puzzle.answers.map((a) => a.word).filter((w) => w !== word);
-    const det = $('#res-others');
-    det.open = false;
-    det.hidden = !others.length;
-    det.querySelector('summary').textContent = '다른 정답 ' + others.length + '개';
-    det.querySelector('p').textContent = others.slice(0, 40).join(' · ');
-    $('#res-next').textContent = state.stage < TOTAL ? '스테이지 ' + (state.stage + 1) : '정상으로';
-    $('#res-map').textContent = '지도';
-    openSheet('#result');
-  }
-
   function onHint() {
     if (state.mode === 'tutorial') { finishTutorial(); return; }
     if (state.mode === 'daily' || !state.open || state.busy) return;
@@ -579,37 +543,19 @@
       $('#btn-hint').textContent = '정답 보기';
       $('#answer').value = '';
       renderAbilities();
-      toast(state.mode === 'stage' ? '첫 글자를 알려 드렸어요 · 별 2개' : '첫 글자를 알려 드렸어요');
+      toast('첫 글자를 알려 드렸어요 · 정답을 보면 연속 기록이 끊겨요');
       return;
     }
     const a = state.hintAnswer || state.puzzle.answers[0];
     $('#answer').value = a.word;
-    if (state.mode === 'endless') clearEndless(a.word, a.path, true);
-    else clearStage(a.word, a.path, true);
-  }
-
-  function showEnding() {
-    closeSheets();
-    $('#end-stars').textContent = '★ ' + totalStars() + ' / ' + TOTAL * 3;
-    setTimeout(() => openSheet('#ending', true), 260);
-  }
-
-  async function share() {
-    const text = '자모 점프 20 스테이지 완주 ★ ' + totalStars() + '/' + TOTAL * 3 + '\n' + location.href.split(/[?#]/)[0];
-    try {
-      if (navigator.share) { await navigator.share({ text }); return; }
-      await navigator.clipboard.writeText(text);
-      toast('복사했어요', 'ok');
-    } catch (e) {
-      if (!e || e.name !== 'AbortError') toast('공유하지 못했어요', 'bad');
-    }
+    clearEndless(a.word, a.path, true);
   }
 
   /* ---------- 튜토리얼 ---------- */
   /* ---------- 무한 모드 ---------- */
   let genCtx = null;
   const ctx = () => genCtx || (genCtx = Gen.makeContext(window.FAM));
-  const LEVEL_LABEL = { easy: '쉬움', normal: '보통', hard: '어려움' };
+  const LEVEL_LABEL = { warm: '입문', easy: '쉬움', normal: '보통', tricky: '까다로움', hard: '어려움' };
   const endlessOf = (lv) => progress.endless[lv] || (progress.endless[lv] = { best: 0 });
 
   function startEndless(level) {
@@ -657,34 +603,49 @@
     openSheet('#result');
   }
 
-  /* ---------- 오늘의 도전 ---------- */
-  const DAILY_KEY = 'jamo-jump-daily';
-  const DAILY_LEVELS = ['easy', 'normal', 'hard'];
+  /* ---------- 오늘의 도전: 하루 20단계 ---------- */
+  // 5·10·15·20단계는 미리 만들어 둔 보스 풀에서 날짜별로 하나씩, 나머지 16단계는 날짜 시드로 그 자리에서 만든다.
+  const DAILY_KEY = 'jamo-jump-daily2';
   const MAX_RESUMES = 2;
-  // 한국 시간 기준 날짜. 모든 기기가 같은 날 같은 문제를 받는다.
+  const BOSS_SECONDS = 180;
   const todayKey = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const freshDaily = () => ({ date: todayKey(), status: 'ready', round: 0, times: [null, null, null], deadline: null, resumes: 0, final: false });
+  const freshDaily = () => ({ date: todayKey(), stage: 1, status: 'ready', deadline: null, resumes: 0, final: false, times: {}, words: {} });
   let daily = (() => {
     const d = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null');
     return d && d.date === todayKey() ? d : freshDaily();
   })();
   const saveDaily = () => localStorage.setItem(DAILY_KEY, JSON.stringify(daily));
-  const dailyCache = {};
-  const secondsOf = (r) => Gen.LEVELS[DAILY_LEVELS[r]].seconds;
   const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
-  const dailyStars = () => daily.times.filter(Boolean).length;
   const dateLabel = (k) => Number(k.slice(5, 7)) + '월 ' + Number(k.slice(8, 10)) + '일';
+  const currentStage = () => Math.min(daily.stage, TOTAL);
+  const clearedCount = () => (daily.status === 'done' ? TOTAL : daily.stage - 1);
+  const dailyStars = () => BOSS_AT.filter((b) => clearedCount() >= b).length;
+  const totalTime = () => Object.values(daily.times).reduce((a, b) => a + b, 0);
+  const setCache = {};
 
-  function dailyPuzzle(r) {
-    const id = daily.date + ':' + r;
-    if (!dailyCache[id]) {
-      const rng = Gen.mulberry32(Gen.hashSeed('daily:' + id));
-      dailyCache[id] = Gen.generate(ctx(), DAILY_LEVELS[r], rng, { maxTries: 20000 }) || Gen.generate(ctx(), 'normal', rng);
+  function todaySet(date = daily.date) {
+    if (setCache[date]) return setCache[date];
+    const day = Math.floor(Date.parse(date + 'T00:00:00Z') / 864e5);
+    const used = new Set();
+    const set = [];
+    for (let n = 1; n <= TOTAL; n++) {
+      if (BOSS_AT.includes(n)) {
+        const slot = window.BOSSES[n];
+        const b = slot.pool[((day % slot.pool.length) + slot.pool.length) % slot.pool.length];
+        set.push({ n, boss: true, title: slot.title, tip: slot.tip, board: b.board, answers: b.answers, key: b.key, seconds: BOSS_SECONDS, level: 'boss' });
+        used.add(b.key);
+        continue;
+      }
+      const level = Gen.levelForStage(n);
+      const rng = Gen.mulberry32(Gen.hashSeed('daily:' + date + ':' + n));
+      const p = Gen.generate(ctx(), level, rng, { avoid: used, maxTries: 20000 }) || Gen.generate(ctx(), level, rng, { maxTries: 20000 });
+      used.add(p.key);
+      set.push({ n, boss: false, board: p.board, answers: p.answers, key: p.key, seconds: Gen.LEVELS[level].seconds, level });
     }
-    return dailyCache[id];
+    setCache[date] = set;
+    return set;
   }
 
-  // 날짜가 바뀌었거나 진행 중인 라운드의 시간이 다 됐으면 상태를 맞춘다.
   function syncDaily() {
     if (daily.date !== todayKey()) { daily = freshDaily(); saveDaily(); }
     if (daily.status === 'playing' && daily.deadline && Date.now() >= daily.deadline) failDaily();
@@ -699,37 +660,61 @@
 
   function openDaily() {
     syncDaily();
-    if (daily.status === 'playing' || daily.status === 'between') { startDailyRound(); return; }
-    if (daily.status === 'failed' || daily.status === 'done') { showSettle(); return; }
-    state.introGo = () => startDailyRound();
-    $('#intro-badge').className = 'intro-badge boss';
-    $('#intro-badge').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
-    $('#intro-title').textContent = '3라운드, 하루 한 번';
-    $('#intro-sub').innerHTML = '쉬움 60초 → 보통 90초 → 어려움 120초.<br>시간 안에 못 풀면 거기서 끝나요. 깬 라운드마다 별 하나.<br>결과를 공유하면 하루 두 번까지 이어서 할 수 있어요.';
-    $('#intro-go').textContent = '시작';
-    openSheet('#intro', true);
+    if (daily.status === 'ready' && daily.stage === 1 && !progress.dailyIntro) {
+      progress.dailyIntro = true;
+      saveProgress();
+      state.introGo = openMap;
+      $('#intro-badge').className = 'intro-badge boss';
+      $('#intro-badge').textContent = '오늘의 도전';
+      $('#intro-title').textContent = '하루 한 번, 20단계';
+      $('#intro-sub').innerHTML = '단계마다 제한 시간이 있고, 갈수록 어려워져요.<br>5·10·15·20단계는 <b>보스</b>예요. 보스를 넘을 때마다 별 하나.<br>시간 초과면 끝나지만, 결과를 공유하면 <b>하루 두 번</b> 이어서 할 수 있어요.';
+      $('#intro-go').textContent = '지도 보기';
+      openSheet('#intro', true);
+      return;
+    }
+    openMap();
   }
 
-  function startDailyRound() {
-    const r = daily.round;
-    const p = dailyPuzzle(r);
-    if (!daily.deadline) daily.deadline = Date.now() + secondsOf(r) * 1000;
-    daily.status = 'playing';
-    saveDaily();
-    loadPuzzle('daily', p.board, p.answers);
-    state.dailyRound = r;
-    $('#stage-title').textContent = '오늘의 도전';
-    $('#bar-sub').textContent = (r + 1) + '/3 · ' + LEVEL_LABEL[DAILY_LEVELS[r]];
-    startClock();
-    if (finePointer) $('#answer').focus();
+  function playDaily() {
+    syncDaily();
+    if (daily.final || daily.status === 'done' || daily.status === 'failed') { showSettle(); return; }
+    const n = currentStage();
+    const st = todaySet()[n - 1];
+    const resumed = daily.status === 'playing' && daily.deadline;
+    const rules = loadPuzzle('daily', st.board, st.answers);
+    state.stage = n;
+    const title = $('#stage-title');
+    title.textContent = st.boss ? st.title : '스테이지 ' + n;
+    title.classList.toggle('boss', st.boss);
+    $('#bar-sub').textContent = n + ' / ' + TOTAL + ' · ' + (st.boss ? '보스' : LEVEL_LABEL[st.level]);
+    renderProg(n);
+    setInput(false);
+    $('#clock').textContent = fmt(resumed ? daily.deadline - Date.now() : st.seconds * 1000);
+    $('#timer-fill').style.width = '100%';
+    const go = () => {
+      if (!daily.deadline) daily.deadline = Date.now() + st.seconds * 1000;
+      daily.status = 'playing';
+      saveDaily();
+      setInput(true);
+      startClock();
+      if (finePointer) $('#answer').focus();
+    };
+    if (resumed) { go(); return; }
+    const fresh = rules.map(([k]) => k).find((k) => !progress.seen[k]);
+    if (st.boss || fresh) {
+      showIntro(st, fresh);
+      if (st.boss) $('#intro-sub').textContent = st.tip + ' 제한 시간 ' + st.seconds + '초.';
+      $('#intro-go').textContent = '시작';
+      state.introGo = go;
+    } else go();
   }
 
   function startClock() {
     clearInterval(state.clock);
+    const total = todaySet()[currentStage() - 1].seconds * 1000;
     const tick = () => {
       if (state.mode !== 'daily' || !daily.deadline) { clearInterval(state.clock); return; }
       const left = daily.deadline - Date.now();
-      const total = secondsOf(daily.round) * 1000;
       $('#timer-fill').style.width = Math.max(0, (left / total) * 100) + '%';
       $('#timer').classList.toggle('low', left < 10000);
       const c = $('#clock');
@@ -756,56 +741,59 @@
   }
 
   async function clearDaily(word, path) {
-    const r = daily.round;
-    const used = secondsOf(r) * 1000 - (daily.deadline - Date.now());
+    const n = currentStage();
+    const st = todaySet()[n - 1];
+    const used = Math.max(0, st.seconds * 1000 - (daily.deadline - Date.now()));
     clearInterval(state.clock);
     state.open = false;
     state.busy = true;
     setInput(false);
     $('#answer').blur();
-    daily.times[r] = { ms: Math.max(0, used), word };
+    daily.times[n] = used;
+    daily.words[n] = word;
     daily.deadline = null;
-    if (r === 2) { daily.status = 'done'; daily.final = true; } else { daily.round = r + 1; daily.status = 'between'; }
+    if (n === TOTAL) { daily.status = 'done'; daily.final = true; } else { daily.stage = n + 1; daily.status = 'between'; }
     saveDaily();
+    renderProg(n + 1);
     const token = state.token;
     await playPath(state.plane, state.puzzle.board, path, () => token === state.token);
     if (token !== state.token) return;
     await sleep(250);
     if (daily.status === 'done') { showSettle(); return; }
     const k = $('#res-kicker');
-    k.textContent = (r + 1) + '라운드 클리어 · ' + fmt(used);
-    k.className = 'kicker';
-    $('#res-stars').hidden = false;
-    $('#res-stars').innerHTML = [0, 1, 2].map((i) => STAR(!!daily.times[i])).join('');
+    k.textContent = (st.boss ? '보스 격파 · ' + st.title : '스테이지 ' + n + ' 클리어') + ' · ' + fmt(used);
+    k.className = 'kicker' + (st.boss ? ' boss' : '');
+    $('#res-stars').hidden = !st.boss;
+    $('#res-stars').innerHTML = BOSS_AT.map((b) => STAR(clearedCount() >= b)).join('');
     fillResult(word, path);
-    $('#res-others').hidden = true;
-    const n = daily.round;
-    $('#res-next').textContent = (n + 1) + '라운드 · ' + LEVEL_LABEL[DAILY_LEVELS[n]] + ' ' + secondsOf(n) + '초';
-    $('#res-map').textContent = '잠깐 쉬기';
+    const next = todaySet()[n];
+    $('#res-next').textContent = (next.boss ? '보스 · ' + next.title : '스테이지 ' + (n + 1)) + ' · ' + next.seconds + '초';
+    $('#res-map').textContent = '지도';
     openSheet('#result');
   }
 
   function showSettle() {
     closeSheets();
     syncDaily();
+    const done = daily.status === 'done';
     const failed = daily.status === 'failed';
     const canResume = failed && !daily.final && daily.resumes < MAX_RESUMES;
-    const stars = dailyStars();
+    const reached = clearedCount();
     $('#settle-kicker').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
     const t = $('#settle-title');
-    t.textContent = daily.status === 'done' ? '완주' : canResume ? '시간 초과' : stars ? stars + '라운드 통과' : '내일 다시';
-    t.className = 'verdict sm ' + (daily.status === 'done' ? 'ok' : canResume ? 'bad' : '');
-    $('#settle-stars').innerHTML = [0, 1, 2].map((i) => STAR(!!daily.times[i])).join('');
-    $('#settle-rounds').innerHTML = DAILY_LEVELS.map((lv, i) => {
-      const rec = daily.times[i];
-      let right;
-      if (rec) right = '<span class="sr-word">' + rec.word + '</span><span class="sr-time">' + fmt(rec.ms) + '</span>';
-      else if (failed && i === daily.round) right = daily.final
-        ? '<span class="sr-fail">시간 초과</span><span class="sr-answer">정답 <b>' + dailyPuzzle(i).key + '</b></span>'
-        : '<span class="sr-fail">시간 초과</span>';
-      else right = '<span class="sr-none">' + (daily.final ? '도전 못 함' : '—') + '</span>';
-      return '<li class="' + (rec ? 'done' : failed && i === daily.round ? 'fail' : '') + '"><span class="sr-lv">' + LEVEL_LABEL[lv] + ' <small>' + secondsOf(i) + '초</small></span>' + right + '</li>';
-    }).join('');
+    t.textContent = done ? '완주' : canResume ? '시간 초과' : reached + '단계 통과';
+    t.className = 'verdict sm ' + (done ? 'ok' : canResume ? 'bad' : '');
+    $('#settle-stars').innerHTML = BOSS_AT.map((b) => STAR(reached >= b)).join('');
+    const set = todaySet();
+    const failSt = set[currentStage() - 1];
+    const rows = [
+      ['통과', reached + ' / ' + TOTAL + '단계'],
+      ['보스', BOSS_AT.map((b, i) => '<span class="sr-boss' + (reached >= b ? ' on' : '') + '">' + set[b - 1].title + '</span>').join('')],
+      ['총 시간', fmt(totalTime())],
+    ];
+    if (failed) rows.push(['멈춘 곳', (failSt.boss ? failSt.title : '스테이지 ' + failSt.n) + (daily.final ? ' · 정답 <b class="sr-ans">' + failSt.key + '</b>' : '')]);
+    if (daily.resumes) rows.push(['이어하기', daily.resumes + '회']);
+    $('#settle-rounds').innerHTML = rows.map(([k, v]) => '<li><span class="sr-lv">' + k + '</span><span class="sr-val">' + v + '</span></li>').join('');
     $('#settle-next').textContent = daily.final ? nextDailyText() : '정답은 오늘 도전이 끝나면 공개돼요.';
     const pri = $('#settle-primary');
     const sec = $('#settle-secondary');
@@ -814,18 +802,18 @@
       pri.onclick = async () => {
         if (!(await shareDaily())) return;
         daily.resumes++;
-        daily.status = 'playing';
+        daily.status = 'between';
         daily.deadline = null;
         saveDaily();
-        startDailyRound();
+        playDaily();
       };
       sec.textContent = '오늘은 여기까지';
       sec.onclick = () => { daily.final = true; saveDaily(); showSettle(); };
     } else {
       pri.textContent = '결과 공유';
       pri.onclick = () => shareDaily();
-      sec.textContent = '처음으로';
-      sec.onclick = openHome;
+      sec.textContent = '지도';
+      sec.onclick = openMap;
     }
     setTimeout(() => openSheet('#settle', true), 200);
   }
@@ -838,12 +826,17 @@
   }
 
   async function shareDaily() {
-    const rows = DAILY_LEVELS.map((lv, i) => {
-      const rec = daily.times[i];
-      return (rec ? '🟢 ' : i === daily.round && daily.status === 'failed' ? '🔴 ' : '⚪ ') + LEVEL_LABEL[lv] + ' ' + (rec ? fmt(rec.ms) : i === daily.round && daily.status === 'failed' ? '시간 초과' : '-');
+    const reached = clearedCount();
+    const blocks = Array.from({ length: TOTAL }, (_, i) => {
+      const n = i + 1;
+      if (n <= reached) return BOSS_AT.includes(n) ? '👑' : '🟩';
+      if (n === reached + 1 && daily.status === 'failed') return '🟥';
+      return '⬜';
     });
-    const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'), '★'.repeat(dailyStars()) + '☆'.repeat(3 - dailyStars()), ...rows,
-      daily.resumes ? '(이어하기 ' + daily.resumes + '회)' : '', location.href.split(/[?#]/)[0]].filter(Boolean).join('\n');
+    const rowsTxt = [blocks.slice(0, 10).join(''), blocks.slice(10).join('')];
+    const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'),
+      (daily.status === 'done' ? '완주! ' : reached + '/20 ') + '★'.repeat(dailyStars()) + '☆'.repeat(4 - dailyStars()) + ' · ' + fmt(totalTime()),
+      ...rowsTxt, daily.resumes ? '(이어하기 ' + daily.resumes + '회)' : '', location.href.split(/[?#]/)[0]].filter(Boolean).join('\n');
     try {
       if (navigator.share) { await navigator.share({ text }); return true; }
     } catch (e) {
@@ -889,25 +882,24 @@
   function renderHome() {
     syncDaily();
     $('#daily-date').textContent = dateLabel(daily.date);
-    $('#daily-rounds').innerHTML = DAILY_LEVELS.map((lv, i) => {
-      const rec = daily.times[i];
-      const fail = daily.status === 'failed' && i === daily.round;
-      const cls = rec ? 'done' : fail ? 'fail' : (daily.status === 'playing' || daily.status === 'between') && i === daily.round ? 'now' : '';
-      return '<span class="dr ' + cls + '"><b>' + LEVEL_LABEL[lv] + '</b><small>' + (rec ? fmt(rec.ms) : fail ? '시간 초과' : secondsOf(i) + '초') + '</small></span>';
+    const reached = clearedCount();
+    $('#daily-rounds').innerHTML = Array.from({ length: TOTAL }, (_, i) => {
+      const n = i + 1;
+      const cls = (BOSS_AT.includes(n) ? 'boss ' : '') + (n <= reached ? 'done' : n === reached + 1 && daily.status === 'failed' ? 'fail' : n === reached + 1 && !daily.final ? 'now' : '');
+      return '<i class="' + cls + '"></i>';
     }).join('');
-    let note = '하루 한 번 · 공유하면 2번 이어하기';
+    let note = '20단계 · 보스 4 · 공유하면 2번 이어하기';
     let cta = '도전';
-    if (daily.status === 'playing') { note = '진행 중 · ' + fmt(daily.deadline - Date.now()) + ' 남음'; cta = '이어하기'; }
-    else if (daily.status === 'between') { note = (daily.round + 1) + '라운드 대기 중'; cta = '이어하기'; }
-    else if (daily.status === 'failed' && !daily.final) { note = '이어하기 ' + (MAX_RESUMES - daily.resumes) + '회 남음'; cta = '결과 보기'; }
-    else if (daily.final) { note = '★ ' + dailyStars() + ' · ' + nextDailyText(); cta = '결과 보기'; }
+    if (daily.status === 'playing') { note = '스테이지 ' + currentStage() + ' 진행 중 · ' + fmt(daily.deadline - Date.now()) + ' 남음'; cta = '이어하기'; }
+    else if (daily.status === 'between') { note = reached + '단계 통과 · ★ ' + dailyStars(); cta = '이어하기'; }
+    else if (daily.status === 'failed' && !daily.final) { note = '시간 초과 · 이어하기 ' + (MAX_RESUMES - daily.resumes) + '회 남음'; cta = '정산'; }
+    else if (daily.final) { note = (daily.status === 'done' ? '완주' : reached + '단계') + ' · ★ ' + dailyStars() + ' · ' + nextDailyText(); cta = '결과'; }
     $('#daily-note').textContent = note;
     $('#daily-cta').textContent = cta;
     $('#daily-card').classList.toggle('finished', daily.final);
     const lv = progress.level || 'normal';
     document.querySelectorAll('#home .seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === lv)));
     $('#endless-best').textContent = '최고 연속 ' + endlessOf(lv).best;
-    $('#climb-meta').textContent = progress.best >= TOTAL ? '완주 · ★ ' + totalStars() : progress.best + ' / ' + TOTAL + ' · ★ ' + totalStars();
     clearInterval(state.homeTick);
     if (daily.status === 'playing') state.homeTick = setInterval(() => { if (state.mode === 'home') renderHome(); else clearInterval(state.homeTick); }, 1000);
   }
@@ -982,7 +974,7 @@
       '<div class="c-ex"><span class="c-ico">ㄱ</span><span class="c-ex-note"><b>같은 자음이 여러 칸</b>이면 그중 어느 칸으로든 자음 점프할 수 있어요</span></div>' +
       '<div class="c-ex"><span class="c-ico c">' + FLAG_ICON + '</span><span class="c-ex-note"><b>깃발에 닿으면 바로 끝</b>. 깃발 칸에 자음이 있어도 그 칸에서 다시 점프하지 않아요</span></div>' +
       '<div class="c-ex"><span class="c-ico">✕</span><span class="c-ex-note"><b>점프할 자리에 칸이 없으면</b> 그 점프는 쓸 수 없어요</span></div>' +
-      '<div class="c-ex"><span class="c-ico g">!</span><span class="c-ex-note">판에 따라 <b>모음 점프만</b>, <b>모든 칸 밟기</b> 같은 <b>추가 조건</b>이 붙어요</span></div>' +
+      '<div class="c-ex"><span class="c-ico g">!</span><span class="c-ex-note">판에 따라 <b>추가 조건</b>이 붙어요. <b>모음 점프만</b>, <b>자음 점프만</b>, <b>두 글자 모두 쓰기</b>, <b>모든 칸 밟기</b>(다시 밟아도 됨), <b>모든 칸 한 번씩만</b></span></div>' +
       '</div></div>',
     dict: '<div class="concept"><div class="c-book">표준<br>국어<br>대사전</div><div class="c-row"><span class="c-tile word" style="color:var(--mint);border-color:var(--mint)">✓</span><span class="c-tile word" style="color:var(--coral);border-color:var(--coral)">✕</span></div></div>',
     credit: '<div class="concept c-credit"><span class="show">네 가지 소원</span><span class="ep">EP.2 · 3회전 데스매치 〈숨바꼭질〉</span></div>',
@@ -1077,7 +1069,7 @@
     res = await waitWord();
     if (!alive()) return;
     await coach({ step: 7, title: '같은 글자를 두 번 썼어요',
-      sub: res.path.map((s) => '<span class="p">' + s.syllable + '</span>').join(' → ') + ', 점프 ' + res.path.length + '번으로 깃발. 대신 <b>두 글자 모두 한 번은</b> 써야 해요.',
+      sub: res.path.map((s) => '<span class="p">' + s.syllable + '</span>').join(' → ') + ', 점프 ' + res.path.length + '번으로 깃발. 한 글자만 계속 써도 깃발에 닿으면 정답이에요.',
       next: '다음' });
     if (!alive()) return;
 
@@ -1118,18 +1110,21 @@
 
   $('#tower').addEventListener('click', (e) => {
     const b = e.target.closest('.node');
-    if (b && !b.disabled) startStage(Number(b.dataset.n));
+    if (b && !b.disabled) playDaily();
   });
-  $('#map-play').addEventListener('click', () => startStage(currentStage()));
+  $('#map-play').addEventListener('click', () => {
+    syncDaily();
+    if (daily.final || daily.status === 'done' || daily.status === 'failed') showSettle();
+    else playDaily();
+  });
   $('#btn-tutorial').addEventListener('click', runTutorial);
   $('#btn-back').addEventListener('click', () => {
-    if (state.mode === 'stage') openMap();
+    if (state.mode === 'daily') { if (state.open && daily.status === 'playing') toast('타이머는 계속 흘러요'); openMap(); }
     else if (state.mode === 'tutorial') finishTutorial();
     else openHome();
   });
   $('#map-back').addEventListener('click', openHome);
   $('#daily-card').addEventListener('click', openDaily);
-  $('#climb-card').addEventListener('click', openMap);
   document.querySelectorAll('#home .seg button').forEach((b) => b.addEventListener('click', () => {
     progress.level = b.dataset.level;
     saveProgress();
@@ -1152,14 +1147,10 @@
   });
   $('#res-next').addEventListener('click', () => {
     if (state.mode === 'endless') startEndless(state.level);
-    else if (state.mode === 'daily') startDailyRound();
-    else if (state.stage < TOTAL) startStage(state.stage + 1);
-    else showEnding();
+    else if (state.mode === 'daily') playDaily();
   });
-  $('#res-map').addEventListener('click', () => { if (state.mode === 'stage') openMap(); else openHome(); });
-  $('#end-share').addEventListener('click', share);
-  $('#end-map').addEventListener('click', openMap);
+  $('#res-map').addEventListener('click', () => { if (state.mode === 'daily') openMap(); else openHome(); });
 
   // 테스트와 디버깅용
-  window.__game = { state, progress, startStage, runTutorial, openMap, openHome, startEndless, getDaily: () => daily, setDaily: (d) => { daily = d; saveDaily(); }, dailyPuzzle };
+  window.__game = { state, progress, runTutorial, openMap, openHome, playDaily, startEndless, todaySet, getDaily: () => daily, setDaily: (d) => { daily = d; saveDaily(); } };
 })();
