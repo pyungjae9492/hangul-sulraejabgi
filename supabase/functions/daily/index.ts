@@ -180,8 +180,9 @@ async function invite(uid: string, b: any, fp: string) {
   const day = checkDay(b.day, true);
   const stage = int(b.stage, 1, D.TOTAL);
   const ex = (await stagesOf(uid, day, ATTEMPT)).find((r) => r.stage === stage);
-  // 화면의 시간 초과는 서버 마감(여유 포함)보다 조금 이르다. 원래 제한 시간이 지났으면 멈춘 것으로 본다.
-  if (!ex || ex.cleared_at || Date.now() < Date.parse(ex.deadline) - GRACE_MS - 1500) throw new Fail('not_failed');
+  // 링크는 이어하기를 열 뿐이라 너그럽게 만든다. 이미 통과한 단계만 거절한다.
+  // (시작 기록이 없거나 시계 차이로 아직 마감 전이어도, 이어하기 시작 때 서버가 다시 확인한다.)
+  if (ex && ex.cleared_at) throw new Fail('cleared');
   const invs = await invitesOf(uid, day);
   if (invs.filter((i) => i.used_at).length >= D.MAX_RESUMES) throw new Fail('resume_used');
   const inv = invs.find((i) => !i.used_at);

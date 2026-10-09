@@ -1017,9 +1017,21 @@
   async function sendInvite() {
     const pri = $('#settle-primary');
     pri.disabled = true;
-    const r = await rankSend('invite', { stage: currentStage() });
+    let r = null;
+    let err = '';
+    try { r = await Rank.call('invite', { day: daily.date, stage: currentStage() }); } catch (e) { err = e.message || ''; }
     pri.disabled = false;
-    if (!r || !r.code) { toast('인터넷에 연결되어 있어야 링크를 만들 수 있어요', 'bad'); return; }
+    if (!r || !r.code) {
+      const MSG = {
+        resume_used: '오늘 이어하기 ' + MAX_RESUMES + '번을 모두 썼어요',
+        day: '날짜가 바뀌어서 어제 도전은 이어할 수 없어요',
+        cleared: '이미 통과한 단계예요. 지도에서 다음 단계로 가 주세요',
+      };
+      toast(MSG[err] || (err && err !== 'Failed to fetch' && err !== 'lib' ? '링크를 만들지 못했어요. 잠시 뒤 다시 눌러 주세요' : '인터넷 연결을 확인하고 다시 눌러 주세요'), 'bad');
+      console.warn('invite 실패', err);
+      if (err === 'resume_used') { daily.resumes = MAX_RESUMES; endRun(); showSettle(); }
+      return;
+    }
     daily.invite = { code: r.code, unlocked: !!r.unlocked, by: null };
     saveDaily();
     if (!r.unlocked && await shareDaily(r.code) && navigator.share) toast('링크를 보냈어요. 친구가 열면 바로 알려 드릴게요', 'ok');
