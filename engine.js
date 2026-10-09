@@ -1,15 +1,15 @@
 /*
- * 한글 술래잡기 (네 가지 소원 EP.2, 미니 숨바꼭질) 규칙 엔진
+ * 자모 점프 규칙 엔진 (원작: 네 가지 소원 EP.2 3회전 데스매치)
  *
  * 영상에서 확인한 규칙
- * - 글자 하나마다 능력 두 개 중 하나를 고른다.
- * - 어떤 능력이든, 지금 서 있는 칸의 자음이 들어 있는 글자만 쓸 수 있다. ("같은 글자의 ...")
- *   · 자음 능력: 글자를 이루는 서로 다른 자음 칸으로 이동 (초성 <-> 받침, 양방향)
- *   · 모음 능력: 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동
- * - 모음이 ㅡ, ㅣ, ㅢ 이면 모음 능력 없음. 받침이 없거나 자음이 한 종류뿐이면 자음 능력 없음.
+ * - 글자 하나마다 점프 두 개 중 하나를 고른다.
+ * - 어떤 점프든, 지금 서 있는 칸의 자음이 들어 있는 글자만 쓸 수 있다. ("같은 글자의 ...")
+ *   · 자음 점프: 글자를 이루는 서로 다른 자음 칸으로 이동 (초성 <-> 받침, 양방향)
+ *   · 모음 점프: 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동
+ * - 모음이 ㅡ, ㅣ, ㅢ 이면 모음 점프 없음. 받침이 없거나 자음이 한 종류뿐이면 자음 점프 없음.
  * - 이동할 방향에 칸이 없으면 이동할 수 없다.
- * - 코드네임의 각 글자는 한 번씩, 순서 상관없이 사용한다.
- * - 추가 조건: "모든 칸을 거쳐야 한다", "모음 능력만 사용해야 한다"
+ * - 단어의 각 글자는 한 번씩, 순서 상관없이 사용한다.
+ * - 추가 조건: "모든 칸을 거쳐야 한다", "모음 점프만 사용해야 한다"
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -50,7 +50,7 @@
 
   const baseOf = (c) => BASE[c] || c;
 
-  // 한 글자가 가진 능력: { consonants: [...] (2개 이상일 때만 사용 가능), vector: [dx,dy] | null }
+  // 한 글자가 가진 점프: { consonants: [...] (2개 이상일 때만 사용 가능), vector: [dx,dy] | null }
   function abilitiesOf(ch) {
     const { cho, jung, jong } = decompose(ch);
     const set = [baseOf(cho)];
@@ -62,7 +62,7 @@
   const key = (x, y) => x + ',' + y;
 
   // 보드: { tiles: [{x,y,c}], start: [x,y], goal: [x,y], cond: 'none'|'all'|'vowel' }
-  // goal 칸은 자음이 없는 빈 칸이다 (자음 능력으로는 도착할 수 없다).
+  // goal 칸은 자음이 없는 빈 칸이다 (자음 점프으로는 도착할 수 없다).
   function makeBoardIndex(board) {
     const cells = new Map();
     const byConsonant = new Map();
@@ -76,7 +76,7 @@
   function movesFrom(idx, pos, ability, onlyVowel) {
     const out = [];
     const here = idx.cells.get(key(pos[0], pos[1]));
-    // 밟고 있는 칸의 자음이 이 글자에 없으면 이 글자의 능력은 하나도 쓸 수 없다.
+    // 밟고 있는 칸의 자음이 이 글자에 없으면 이 글자의 점프는 하나도 쓸 수 없다.
     if (!here || !here.c || !ability.letters.includes(here.c)) return out;
     if (ability.vector) {
       const nx = pos[0] + ability.vector[0];
@@ -93,7 +93,7 @@
     return out;
   }
 
-  // 코드네임이 시작 칸에서 도착 칸까지 갈 수 있으면 이동 경로를 돌려준다.
+  // 단어이 시작 칸에서 도착 칸까지 갈 수 있으면 이동 경로를 돌려준다.
   function findPath(board, word, idxArg) {
     if (!isHangulWord(word) || [...word].length !== 2) return null;
     const idx = idxArg || makeBoardIndex(board);

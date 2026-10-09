@@ -3,7 +3,7 @@
 
   const H = window.HangulHide;
   const WORDS = window.WORDS || [];
-  const WORD_SET = new Set(WORDS);
+  const WORD_SET = new Set(WORDS.concat(window.WORDS_EXTRA || []));
   const $ = (s) => document.querySelector(s);
 
   const LOCK_MS = 30000;
@@ -90,8 +90,8 @@
       const tile = el('div', 'tile' + (isStart ? ' start' : '') + (isGoal ? ' goal' : ''));
       tile.dataset.key = t.x + ',' + t.y;
       setPos(tile, t.x, t.y);
-      if (isStart) tile.append(el('span', 'tag', '출발'));
-      if (isGoal) { tile.append(el('span', 'tag', '도착')); tile.append(el('span', 'flag', FLAG)); }
+      if (isStart) tile.setAttribute('aria-label', '출발 ' + t.c);
+      if (isGoal) { tile.setAttribute('aria-label', '도착'); tile.append(el('span', 'flag', FLAG)); }
       if (t.c) tile.append(el('span', 'glyph', t.c));
       plane.append(tile);
     }
@@ -155,7 +155,7 @@
     pawn.classList.add('hop');
   }
 
-  async function playPath(plane, board, path, alive) {
+  async function playPath(plane, board, path, alive, onStep) {
     resetPath(plane);
     const pawn = plane.querySelector('.pawn');
     pawn.classList.add('still');
@@ -168,6 +168,7 @@
       if (!alive()) return false;
       const color = s.type === 'consonant' ? ORANGE : PURPLE;
       drawArrow(plane.querySelector('.g-path'), s.from, s.to, color, { label: s.syllable, animate: true });
+      if (onStep) onStep(s);
       await sleep(300);
       hop(pawn, s.to[0], s.to[1]);
       await sleep(460);
@@ -263,31 +264,28 @@
     $('#lock').hidden = !locked;
     if (locked) {
       $('#lock-fill').style.width = (left / LOCK_MS) * 100 + '%';
-      $('#lock-text').textContent = '오답 · ' + Math.ceil(left / 1000) + '초 뒤 다시 제시할 수 있어요';
+      $('#lock-text').textContent = Math.ceil(left / 1000) + '초 정지';
     }
     setInput(state.open && me.status === 'active' && !locked);
   }
 
-  /* ---------- 입력 중 능력 표시 ---------- */
+  /* ---------- 입력 중 점프 표시 ---------- */
   const typedSyllables = () => [...$('#answer').value].filter((c) => c >= '가' && c <= '힣').slice(0, 2);
 
   function renderAbilities() {
     const box = $('#abilities');
     const sy = typedSyllables();
-    if (!sy.length) {
-      box.innerHTML = '<span class="ab-hint">글자를 입력하면 그 글자의 능력이 보여요</span>';
-      return;
-    }
+    if (!sy.length) { box.innerHTML = ''; return; }
     const onlyVowel = state.puzzle && state.puzzle.board.cond === 'vowel';
     const startC = state.puzzle ? state.idx.cells.get(state.puzzle.board.start.join(',')).c : null;
     box.innerHTML = sy.map((ch) => {
       const a = H.abilitiesOf(ch);
-      const c = a.consonants
-        ? '<span class="chip o' + (onlyVowel ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>'
-        : '<span class="chip off">자음 없음</span>';
-      const v = a.vector ? '<span class="chip p">' + arrowGlyph(a.vector) + '</span>' : '<span class="chip off">모음 없음</span>';
+      const chips = [];
+      if (a.consonants) chips.push('<span class="chip o' + (onlyVowel ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>');
+      if (a.vector) chips.push('<span class="chip p">' + arrowGlyph(a.vector) + '</span>');
+      if (!chips.length) chips.push('<span class="chip off">점프 없음</span>');
       const fromStart = startC && a.letters.includes(startC);
-      return '<div class="ab' + (fromStart ? ' here' : '') + '"' + (fromStart ? ' title="출발 칸 ' + startC + '에서 쓸 수 있어요"' : '') + '><b>' + ch + '</b>' + c + v + '</div>';
+      return '<div class="ab' + (fromStart ? ' here' : '') + '"><b>' + ch + '</b>' + chips.join('') + '</div>';
     }).join('');
   }
 
@@ -325,7 +323,6 @@
     state.round = 0;
     state.solved = 0;
     state.players = mode === 'match' ? PLAYERS.map((p) => ({ ...p, points: 0, status: 'active', lockUntil: 0 })) : [];
-    $('#mode-label').textContent = mode === 'match' ? '데스매치' : '연습';
     $('#tools').hidden = mode !== 'practice';
     $('#lock').hidden = true;
     closeSheets();
@@ -345,12 +342,12 @@
     state.idx = H.makeBoardIndex(state.puzzle.board);
     state.open = true;
     state.plane = renderBoard($('#board'), state.puzzle.board);
-    $('#round-label').textContent = (state.mode === 'match' ? '라운드 ' : '문제 ') + state.round;
+    $('#round-label').textContent = state.mode === 'match' ? state.round + '라운드' : '연습 ' + state.round;
     const c = state.puzzle.board.cond;
     const cond = $('#cond');
     cond.hidden = c === 'none';
     cond.className = 'cond ' + c;
-    cond.innerHTML = c === 'all' ? '<b>추가 조건</b>모든 칸을 거쳐야 한다' : c === 'vowel' ? '<b>추가 조건</b>모음 능력만 사용해야 한다' : '';
+    cond.textContent = c === 'all' ? '모든 칸 밟기' : c === 'vowel' ? '모음 점프만' : '';
     $('#answer').value = '';
     renderAbilities();
     renderScores();
@@ -375,7 +372,7 @@
     if (p.status !== 'active') return;
     if (Math.random() < CPU_MISTAKE[state.difficulty]) {
       p.lockUntil = Date.now() + LOCK_MS;
-      toast(iGa(p.name) + ' 틀렸어요 · 30초 정지');
+      toast(p.name + ' 오답');
       renderScores();
       scheduleCpu(i, LOCK_MS);
       return;
@@ -421,7 +418,7 @@
         simulateRest();
         state.over = true;
       }
-      if (i === 0) kicker = p.status === 'survived' ? '정답 · 승점 2점으로 생존 확정' : '정답 · 승점 +1';
+      if (i === 0) kicker = p.status === 'survived' ? '정답 · 생존 확정' : '정답 +1';
       else { kicker = iGa(p.name) + ' 먼저 찾았어요'; kind = 'bad'; }
     }
     renderScores();
@@ -438,14 +435,15 @@
     $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
     $('#res-steps').innerHTML = path.map((s) => {
       const cons = s.type === 'consonant';
-      const how = cons ? s.fromC + ' 칸에서 ' + s.target + ' 칸으로' : moveText(s.vector);
-      return '<li><span class="sy ' + (cons ? 'o' : 'p') + '">' + s.syllable + '</span><span class="desc"><strong>' + (cons ? '자음 능력' : '모음 능력') + '</strong><small>' + how + '</small></span></li>';
+      return '<span class="step ' + (cons ? 'o' : 'p') + '"><b>' + s.syllable + '</b>' + (cons ? s.fromC + '→' + s.target : arrowGlyph(s.vector)) + '</span>';
     }).join('');
     const others = state.puzzle.answers.map((a) => a.word).filter((w) => w !== word);
-    $('#res-others').textContent = others.length
-      ? '다른 정답 ' + others.length + '개 · ' + others.slice(0, 10).join(', ') + (others.length > 10 ? ' …' : '')
-      : '이 판의 정답은 이것 하나뿐이에요.';
-    $('#res-next').textContent = state.mode === 'practice' ? '다음 문제' : state.over ? '최종 결과 보기' : '다음 라운드';
+    const det = $('#res-others');
+    det.open = false;
+    det.hidden = !others.length;
+    det.querySelector('summary').textContent = '다른 정답 ' + others.length + '개';
+    det.querySelector('p').textContent = others.slice(0, 40).join(' · ') + (others.length > 40 ? ' …' : '');
+    $('#res-next').textContent = state.mode === 'practice' ? '다음' : state.over ? '결과 보기' : '다음 라운드';
     openSheet('#result');
   }
 
@@ -457,9 +455,7 @@
     v.textContent = alive ? '생존' : '탈락';
     v.className = 'verdict ' + (alive ? 'ok' : 'bad');
     const out = state.players.find((p) => p.status === 'out');
-    $('#fin-sub').textContent = alive
-      ? state.round + '라운드 만에 데스매치를 통과했어요. 탈락자는 ' + out.name + '.'
-      : '승점 ' + me.points + '점으로 ' + state.round + '라운드에서 탈락했어요.';
+    $('#fin-sub').textContent = state.round + '라운드 · ' + (alive ? out.name + ' 탈락' : '승점 ' + me.points + '점');
     const order = state.players.slice().sort((a, b) => (b.status === 'survived') - (a.status === 'survived') || b.points - a.points);
     $('#fin-standings').innerHTML = order.map((p) =>
       '<li class="' + p.status + '"><div class="av" style="--c:' + p.color + '">' + esc(p.name[0]) + '</div><span class="name">' + esc(p.name) + '</span>' +
@@ -471,7 +467,7 @@
   async function shareResult() {
     const me = state.players[0];
     const lines = [
-      '한글 술래잡기 · 미니 숨바꼭질',
+      '자모 점프',
       (me.status === 'survived' ? '🟢 생존' : '🔴 탈락') + ' · ' + state.round + '라운드',
       ...state.players.map((p) => (p.status === 'survived' ? '🟢 ' : '🔴 ') + p.name + ' ' + '●'.repeat(p.points) + '○'.repeat(WIN_POINTS - p.points)),
       location.href.split(/[?#]/)[0],
@@ -494,19 +490,19 @@
     const raw = $('#answer').value.replace(/\s+/g, '');
     if ([...raw].length !== 2 || !H.isHangulWord(raw)) {
       shake();
-      toast('완성된 한글 두 글자를 입력하세요', 'bad');
+      toast('한글 두 글자를 입력하세요', 'bad');
       return;
     }
     if (!WORD_SET.has(raw)) {
       shake();
-      toast('‘' + raw + '’' + (lastJong(raw) ? '은' : '는') + ' 사전에 없어요 · 감점 없음');
+      toast('사전에 없는 단어예요 · 감점 없음');
       return;
     }
     const path = H.findPath(state.puzzle.board, raw);
     if (path) { roundWon(0, raw, path); return; }
     shake();
     if (navigator.vibrate) navigator.vibrate(120);
-    const msg = '‘' + raw + '’' + (lastJong(raw) && lastJong(raw) !== 8 ? '으로' : '로') + '는 도착할 수 없어요';
+    const msg = '‘' + raw + '’' + (lastJong(raw) && lastJong(raw) !== 8 ? '으로' : '로') + '는 못 가요';
     if (state.mode === 'match') {
       state.players[0].lockUntil = Date.now() + LOCK_MS;
       toast(msg + ' · 30초 정지', 'bad');
@@ -523,7 +519,7 @@
     if (!state.open) return;
     const list = state.puzzle.answers;
     const a = list[Math.floor(Math.random() * list.length)];
-    toast('정답 ' + list.length + '개 · 그중 하나는 ‘' + a.word[0] + '’' + (lastJong(a.word[0]) && lastJong(a.word[0]) !== 8 ? '으로' : '로') + ' 시작해요');
+    toast('정답 ' + list.length + '개 · ' + a.word[0] + '○');
   }
 
   async function onReveal() {
@@ -536,7 +532,7 @@
     const token = state.roundId;
     await playPath(state.plane, state.puzzle.board, a.path, () => token === state.roundId);
     if (token !== state.roundId) return;
-    showResult({ kicker: '정답 공개', kind: 'muted', word: a.word, path: a.path });
+    showResult({ kicker: '정답', kind: 'muted', word: a.word, path: a.path });
   }
 
   function leaveGame() {
@@ -562,26 +558,39 @@
     $('#vowel-grid').innerHTML = [...groups].map(([k, vs]) => '<span>' + vs.join(' ') + '<em>' + k + '</em></span>').join('');
   }
 
+  function wordLighter(id) {
+    const spans = [...document.querySelectorAll(id + ' span')];
+    return {
+      reset: () => spans.forEach((s) => s.classList.remove('o', 'p')),
+      step: (s) => spans[s.index] && spans[s.index].classList.add(s.type === 'consonant' ? 'o' : 'p'),
+      all: (path) => path.forEach((s) => spans[s.index] && spans[s.index].classList.add(s.type === 'consonant' ? 'o' : 'p')),
+    };
+  }
+
   async function openRules() {
     openSheet('#rules', true);
     const plane = renderBoard($('#rules-board'), EXAMPLE);
     const path = H.findPath(EXAMPLE, '규칙');
-    if (reduceMotion) { drawStatic(plane, EXAMPLE, path); return; }
+    const lit = wordLighter('#rules-word');
+    lit.reset();
+    if (reduceMotion) { drawStatic(plane, EXAMPLE, path); lit.all(path); return; }
     await sleep(420);
-    playPath(plane, EXAMPLE, path, () => $('#rules').classList.contains('open'));
+    playPath(plane, EXAMPLE, path, () => $('#rules').classList.contains('open'), lit.step);
   }
 
   /* ---------- 홈 데모 ---------- */
   async function demoLoop() {
     const host = $('#hero-board');
     const path = H.findPath(EXAMPLE, '규칙');
-    if (reduceMotion) { drawStatic(renderBoard(host, EXAMPLE), EXAMPLE, path); return; }
+    const lit = wordLighter('#hero-word');
+    if (reduceMotion) { drawStatic(renderBoard(host, EXAMPLE), EXAMPLE, path); lit.all(path); return; }
     const onHome = () => $('#home').classList.contains('active') && !document.hidden;
     for (;;) {
       if (!onHome()) { await sleep(600); continue; }
       const plane = renderBoard(host, EXAMPLE);
+      lit.reset();
       await sleep(900);
-      await playPath(plane, EXAMPLE, path, onHome);
+      await playPath(plane, EXAMPLE, path, onHome, lit.step);
       await sleep(2400);
     }
   }

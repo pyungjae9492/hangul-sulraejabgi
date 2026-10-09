@@ -4,53 +4,50 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0F1014" />
-  <meta name="description" content="두 글자 코드네임으로 출발 칸에서 도착 칸까지. 네 가지 소원 3회전 데스매치 〈미니 숨바꼭질〉을 웹에서." />
-  <title>한글 술래잡기 · 미니 숨바꼭질</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='52' rx='12' fill='%232E3039'/%3E%3Crect x='4' y='50' width='56' height='10' rx='5' fill='%230A0B0E'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%23F2F3F7' font-family='sans-serif' font-weight='900'%3E%E3%84%B9%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="두 글자 단어로 자음과 모음을 타고 점프해서 깃발까지. 한글 퍼즐 자모 점프." />
+  <meta property="og:title" content="자모 점프" />
+  <meta property="og:description" content="두 글자 단어로 자음과 모음을 타고 점프해서 깃발까지." />
+  <title>자모 점프</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='52' rx='12' fill='%232E3039'/%3E%3Crect x='4' y='50' width='56' height='10' rx='5' fill='%230A0B0E'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%23F2F3F7' font-family='sans-serif' font-weight='900'%3E%E3%84%B1%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
   <div id="app">
     <section id="home" class="screen active" aria-labelledby="logo">
-      <p class="eyebrow">네 가지 소원 · 3회전 데스매치</p>
-      <h1 id="logo" class="logo" aria-label="한글 술래잡기">
-        <span class="logo-line" aria-hidden="true">한글</span>
-        <span class="logo-tiles" aria-hidden="true"><i>술</i><i>래</i><i>잡</i><i>기</i></span>
+      <h1 id="logo" class="logo" aria-label="자모 점프">
+        <span class="logo-tiles" aria-hidden="true"><i>자</i><i>모</i><i>점</i><i>프</i></span>
       </h1>
 
-      <div class="hero">
+      <div class="hero" aria-hidden="true">
         <div id="hero-board" class="board-host demo"></div>
-        <p class="hero-caption"><b class="t-o">칙</b>으로 ㅊ에서 ㄱ으로, <b class="t-p">규</b>로 아래 2칸. 코드네임 <b>규칙</b>이면 도착.</p>
+        <div id="hero-word" class="mini-word"><span data-i="0">규</span><span data-i="1">칙</span></div>
       </div>
 
       <div class="modes">
         <button class="mode primary" id="btn-match" type="button">
-          <span class="mode-tile" aria-hidden="true">숨</span>
-          <span class="mode-text"><strong>데스매치</strong><small>AI 둘과 겨뤄 승점 2점을 먼저 따면 생존</small></span>
-          <span class="chev" aria-hidden="true">›</span>
+          <span class="mode-tile" aria-hidden="true">대</span>
+          <strong>대결</strong>
+          <span class="mode-meta" aria-hidden="true">vs AI 2</span>
         </button>
         <button class="mode" id="btn-practice" type="button">
           <span class="mode-tile" aria-hidden="true">연</span>
-          <span class="mode-text"><strong>연습</strong><small>이동 미리보기와 힌트로 감 익히기</small></span>
-          <span class="chev" aria-hidden="true">›</span>
+          <strong>연습</strong>
+          <span class="mode-meta" aria-hidden="true">힌트</span>
         </button>
       </div>
 
-      <div class="level">
-        <span id="level-label">난이도</span>
-        <div class="seg" role="radiogroup" aria-labelledby="level-label">
+      <div class="home-foot">
+        <div class="seg" role="radiogroup" aria-label="난이도">
           <button type="button" role="radio" data-level="easy" aria-checked="false">쉬움</button>
           <button type="button" role="radio" data-level="normal" aria-checked="true">보통</button>
           <button type="button" role="radio" data-level="hard" aria-checked="false">어려움</button>
         </div>
+        <button class="pill" id="btn-rules" type="button">규칙</button>
       </div>
-
-      <button class="link" id="btn-rules" type="button">규칙 보기</button>
-      <p class="credit">웹 예능 〈네 가지 소원〉 EP.2에 나온 게임을 바탕으로 만들었어요.</p>
     </section>
 
     <section id="game" class="screen" aria-label="게임">
@@ -58,7 +55,7 @@
         <button class="icon-btn" id="btn-back" type="button" aria-label="처음으로">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
         </button>
-        <div class="bar-title"><small id="mode-label"></small><strong id="round-label"></strong></div>
+        <strong id="round-label" class="bar-title"></strong>
         <button class="icon-btn" id="btn-rules-2" type="button" aria-label="규칙 보기">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" /></svg>
         </button>
@@ -71,9 +68,9 @@
       <form id="dock" class="dock" autocomplete="off">
         <div id="abilities" class="abilities" aria-live="polite"></div>
         <div class="field" id="field">
-          <label for="answer" class="sr-only">두 글자 코드네임</label>
-          <input id="answer" type="text" lang="ko" placeholder="두 글자 코드네임" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" />
-          <button id="btn-submit" class="btn-primary" type="submit">제시</button>
+          <label for="answer" class="sr-only">두 글자 단어</label>
+          <input id="answer" type="text" lang="ko" placeholder="두 글자 단어" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <button id="btn-submit" class="btn-primary" type="submit">확인</button>
         </div>
         <div id="lock" class="lock" hidden>
           <div class="lock-bar"><i id="lock-fill"></i></div>
@@ -81,8 +78,8 @@
         </div>
         <div id="tools" class="tools" hidden>
           <button class="tool" id="btn-hint" type="button">힌트</button>
-          <button class="tool" id="btn-reveal" type="button">정답 보기</button>
-          <button class="tool" id="btn-skip" type="button">다른 문제</button>
+          <button class="tool" id="btn-reveal" type="button">정답</button>
+          <button class="tool" id="btn-skip" type="button">넘기기</button>
         </div>
       </form>
     </section>
@@ -95,21 +92,20 @@
     <div class="handle" aria-hidden="true"></div>
     <p id="res-kicker" class="kicker"></p>
     <div id="res-word" class="word"></div>
-    <ol id="res-steps" class="steps"></ol>
-    <p id="res-others" class="others"></p>
+    <div id="res-steps" class="steps"></div>
+    <details id="res-others" class="others"><summary></summary><p></p></details>
     <div class="sheet-actions"><button id="res-next" class="btn-primary wide" type="button"></button></div>
   </section>
 
   <section id="final" class="sheet" aria-hidden="true" aria-labelledby="fin-verdict">
     <div class="handle" aria-hidden="true"></div>
-    <p class="kicker muted">데스매치 결과</p>
     <h2 id="fin-verdict" class="verdict"></h2>
     <p id="fin-sub" class="fin-sub"></p>
     <ul id="fin-standings" class="standings"></ul>
     <div class="sheet-actions">
-      <button id="fin-again" class="btn-primary wide" type="button">다시 도전</button>
+      <button id="fin-again" class="btn-primary wide" type="button">다시 하기</button>
       <div class="row">
-        <button id="fin-share" class="btn-ghost" type="button">결과 공유</button>
+        <button id="fin-share" class="btn-ghost" type="button">공유</button>
         <button id="fin-home" class="btn-ghost" type="button">처음으로</button>
       </div>
     </div>
@@ -118,35 +114,52 @@
   <section id="rules" class="sheet tall" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="rules-title">
     <div class="handle" aria-hidden="true"></div>
     <div class="sheet-head">
-      <h2 id="rules-title">미니 숨바꼭질 규칙</h2>
+      <h2 id="rules-title">규칙</h2>
       <button class="icon-btn" id="btn-rules-close" type="button" aria-label="닫기">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
     </div>
-    <p class="rules-lead">게임판의 <b class="t-mint">출발</b> 칸에서 <b class="t-coral">도착</b> 칸까지 갈 수 있는 두 글자 코드네임을 먼저 찾으세요. 글자마다 능력 하나를 골라 한 번씩 쓰고, 순서는 자유예요.</p>
-    <p class="rules-key">한 글자는 <b>지금 밟고 있는 칸의 자음이 그 글자에 들어 있을 때만</b> 쓸 수 있어요. 자음 능력과 모음 능력 모두 같아요.</p>
+
+    <p class="rule-goal">두 글자 단어로 <b class="t-mint">초록 칸</b>에서 <b class="t-coral">깃발</b>까지 점프하세요.</p>
     <div id="rules-board" class="board-host demo"></div>
-    <div class="rule-cards">
-      <div class="rule-card o">
-        <h3>자음 능력</h3>
-        <p>밟고 있는 자음에서 같은 글자의 다른 자음 칸으로 이동해요. ㅊ 칸에서 <b>칙</b>을 쓰면 ㄱ 칸으로 가요.</p>
-        <p class="fine">받침이 없거나 자음이 한 종류뿐인 글자(꼭)는 쓸 수 없어요. 겹받침은 구성 자음을 모두 써요.</p>
+    <div id="rules-word" class="mini-word"><span data-i="0">규</span><span data-i="1">칙</span></div>
+
+    <div class="rule-key">
+      <span class="key-icon" aria-hidden="true">!</span>
+      <p>밟고 있는 자음이 들어 있는 글자만 쓸 수 있어요.<small>글자마다 한 번씩, 순서는 자유</small></p>
+    </div>
+
+    <div class="jumps">
+      <div class="jump o">
+        <h3>자음 점프</h3>
+        <p class="eg"><b>칙</b> ㅊ → ㄱ</p>
+        <p>같은 글자의 다른 자음 칸으로</p>
       </div>
-      <div class="rule-card p">
-        <h3>모음 능력</h3>
-        <p>밟고 있는 자음이 든 글자의 모음에서 튀어나온 획의 방향으로, 획 수만큼 이동해요. ㄱ 칸에서 <b>규</b>를 쓰면 ㅠ를 따라 아래로 2칸 가요.</p>
-        <p class="fine">ㅡ, ㅣ, ㅢ는 쓸 수 없어요. 이동할 자리에 칸이 없어도 쓸 수 없어요.</p>
-        <div id="vowel-grid" class="vowel-grid"></div>
+      <div class="jump p">
+        <h3>모음 점프</h3>
+        <p class="eg"><b>규</b> ↓2</p>
+        <p>획 방향으로, 획 개수만큼</p>
       </div>
     </div>
-    <h3 class="rules-sub">추가 조건</h3>
-    <p class="rules-text">판에 따라 <b>모든 칸을 거쳐야 한다</b> 또는 <b>모음 능력만 사용해야 한다</b>가 붙어요.</p>
-    <h3 class="rules-sub">점수</h3>
-    <p class="rules-text">정답이면 승점 1점. 오답이면 30초 동안 제시할 수 없어요. 승점 2점을 먼저 딴 두 명이 생존하고, 남은 한 명이 탈락해요. 사전에 없는 단어는 오답으로 치지 않아요.</p>
+
+    <details class="more">
+      <summary>모음별 방향</summary>
+      <div id="vowel-grid" class="vowel-grid"></div>
+      <p class="fine">ㅡ ㅣ ㅢ는 모음 점프가 없어요. 받침이 없거나 자음이 한 종류인 글자는 자음 점프가 없어요.</p>
+    </details>
+
+    <ul class="facts">
+      <li><span class="fact-k">오답</span><span>30초 정지</span></li>
+      <li><span class="fact-k">2점</span><span>생존 · 남은 한 명 탈락</span></li>
+      <li><span class="fact-k">조건</span><span>모든 칸 밟기 · 모음 점프만</span></li>
+    </ul>
+
+    <p class="credit">웹 예능 〈네 가지 소원〉 EP.2의 데스매치에서 가져온 규칙이에요.</p>
   </section>
 
-  <script src="words.js?v=5"></script>
-  <script src="engine.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="words.js?v=6"></script>
+  <script src="engine.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
+
