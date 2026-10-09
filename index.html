@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#4a1818" />
+  <title>한글 술래잡기 · 미니 숨바꼭질 데스매치</title>
+  <link rel="stylesheet" href="style.css?v=3" />
+</head>
+<body>
+  <main id="app">
+    <!-- 메뉴 -->
+    <section id="menu" class="screen active">
+      <p class="eyebrow">네 가지 소원 EP.2 · 3회전</p>
+      <h1>한글 <span>술래잡기</span></h1>
+      <p class="lead">두 글자 코드네임으로 출발 칸에서 도착 칸까지 이동하세요.<br />2점을 먼저 얻으면 생존, 끝까지 남은 한 명이 탈락합니다.</p>
+      <div class="menu-buttons">
+        <button class="btn primary" id="btn-match">데스매치 시작 <small>나 + AI 2명</small></button>
+        <button class="btn" id="btn-practice">연습 모드 <small>무제한 · 힌트</small></button>
+        <button class="btn ghost" id="btn-rules">규칙 보기</button>
+      </div>
+      <label class="level">난이도
+        <select id="difficulty">
+          <option value="easy">쉬움 (정답 많음)</option>
+          <option value="normal" selected>보통</option>
+          <option value="hard">어려움 (정답 1~3개)</option>
+        </select>
+      </label>
+    </section>
+
+    <!-- 게임 -->
+    <section id="game" class="screen">
+      <header class="topbar">
+        <button class="btn small ghost" id="btn-back">← 메뉴</button>
+        <strong id="mode-title"></strong>
+        <button class="btn small ghost" id="btn-rules-2">규칙</button>
+      </header>
+
+      <div id="scoreboard" class="scoreboard"></div>
+
+      <div class="stage">
+        <div class="board-wrap">
+          <div class="round-line"><span id="round-label"></span><span id="cond-badge" class="badge"></span></div>
+          <div id="board" class="board"></div>
+        </div>
+
+        <aside class="panel">
+          <form id="answer-form" autocomplete="off">
+            <label for="answer">코드네임 (두 글자)</label>
+            <div class="answer-row">
+              <input id="answer" type="text" inputmode="text" lang="ko" placeholder="예: 규칙" autocomplete="off" />
+              <button class="btn primary" id="btn-submit" type="submit">제출</button>
+            </div>
+          </form>
+          <p id="lock-msg" class="lock-msg" hidden></p>
+          <p id="feedback" class="feedback" aria-live="polite"></p>
+          <div class="practice-tools" id="practice-tools" hidden>
+            <button class="btn small" id="btn-hint" type="button">힌트</button>
+            <button class="btn small" id="btn-reveal" type="button">정답 보기</button>
+            <button class="btn small" id="btn-skip" type="button">다음 문제</button>
+          </div>
+          <ul id="log" class="log"></ul>
+        </aside>
+      </div>
+
+      <div id="next-bar" class="next-bar" hidden>
+        <p id="result-text"></p>
+        <button class="btn primary" id="btn-next">다음 라운드</button>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <div id="result-modal" class="modal" hidden>
+      <div class="modal-card center">
+        <h2 id="final-title"></h2>
+        <p id="final-text"></p>
+        <div class="menu-buttons">
+          <button class="btn primary" id="btn-again">다시 하기</button>
+          <button class="btn ghost" id="btn-to-menu">메뉴로</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 규칙 -->
+    <div id="rules-modal" class="modal" hidden>
+      <div class="modal-card">
+        <button class="close" id="btn-rules-close" aria-label="닫기">×</button>
+        <h2>미니 숨바꼭질 규칙</h2>
+        <ol class="rules">
+          <li>게임판에는 자음 칸이 놓여 있고, <b class="g">출발</b> 칸에서 <b class="r">도착</b> 칸(빈 칸)까지 가야 합니다.</li>
+          <li>두 글자 코드네임을 제시합니다. 글자마다 <b>능력 하나</b>를 골라 한 번씩, 순서는 자유롭게 사용합니다.</li>
+          <li><b class="o">자음 능력</b>: 글자 안의 다른 자음 칸으로 이동합니다. 초성과 받침 어느 쪽에서든 가능하고, 겹받침은 구성 자음을 모두 쓸 수 있습니다. 받침이 없거나 같은 자음뿐인 글자(예: 꼭)는 쓸 수 없습니다.</li>
+          <li><b class="p">모음 능력</b>: 모음에서 튀어나온 획의 방향으로 획 수만큼 이동합니다. ㅡ, ㅣ, ㅢ는 쓸 수 없고, 이동할 칸이 없으면 이동할 수 없습니다.</li>
+          <li>추가 조건: <b>모든 칸을 거쳐야 한다</b> / <b>모음 능력만 사용해야 한다</b>.</li>
+          <li>정답이면 1점, 오답이면 30초 동안 제시할 수 없습니다. 2점을 먼저 얻은 두 명이 생존하고, 남은 한 명이 탈락합니다.</li>
+        </ol>
+        <h3>예시: 출발 ㅊ → 도착, 정답 <b>규칙</b></h3>
+        <div id="rules-example" class="board small"></div>
+        <p class="note"><b>칙</b>(자음 능력)으로 ㅊ → ㄱ, 이어서 <b>규</b>(ㅠ, 아래 두 획)로 아래 2칸 이동해 도착합니다.</p>
+        <h3>모음 이동 표</h3>
+        <table class="vtable" id="vowel-table"></table>
+      </div>
+    </div>
+  </main>
+
+  <script src="words.js?v=3"></script>
+  <script src="engine.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
