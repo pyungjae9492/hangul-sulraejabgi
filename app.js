@@ -13,14 +13,6 @@
   const G = 0.14;
   const ORANGE = '#FF8A3D';
   const PURPLE = '#9B6BFF';
-  const EXAMPLE = {
-    tiles: [{ x: 0, y: 0, c: 'ㅊ' }, { x: 1, y: 1, c: 'ㄱ' }, { x: 0, y: 2, c: 'ㅇ' }, { x: 1, y: 3, c: null }],
-    start: [0, 0], goal: [1, 3], cond: 'none',
-  };
-  const LINE = {
-    tiles: [{ x: 0, y: 0, c: 'ㅅ' }, { x: 1, y: 0, c: 'ㅁ' }, { x: 2, y: 0, c: 'ㄹ' }, { x: 3, y: 0, c: null }],
-    start: [0, 0], goal: [3, 0],
-  };
   const ARROWS = { '1,0': '→', '-1,0': '←', '0,-1': '↑', '0,1': '↓', '1,-1': '↗', '-1,1': '↙', '-1,-1': '↖', '1,1': '↘' };
   const FLAG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4h11l-2.5 4L17 12H6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const STAR = (on) => '<svg viewBox="0 0 24 24" aria-hidden="true"><path class="' + (on ? 'star-on' : 'star-off') + '" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z"/></svg>';
@@ -44,6 +36,48 @@
   };
   const euro = (w) => w + (lastJong(w) && lastJong(w) !== 8 ? '으로' : '로');
   const arrowGlyph = (v) => ARROWS[Math.sign(v[0]) + ',' + Math.sign(v[1])] + Math.max(Math.abs(v[0]), Math.abs(v[1]));
+
+  // 모음 그림: 튀어나온 획만 보라색으로 칠해, 그 방향과 획 수가 곧 점프라는 걸 보여 준다.
+  const VG = (() => {
+    const V = (x, a, b) => [x, a, x, b];
+    const Hz = (y, a, b) => [a, y, b, y];
+    // [기본 획들, 튀어나온 획들] (24x24 칸 좌표)
+    const S = {
+      'ㅏ': [[V(11, 3, 21)], [Hz(12, 11, 18)]],
+      'ㅑ': [[V(11, 3, 21)], [Hz(9, 11, 18), Hz(15, 11, 18)]],
+      'ㅓ': [[V(14, 3, 21)], [Hz(12, 7, 14)]],
+      'ㅕ': [[V(14, 3, 21)], [Hz(9, 7, 14), Hz(15, 7, 14)]],
+      'ㅐ': [[V(9, 3, 21), V(17, 3, 21)], [Hz(12, 9, 17)]],
+      'ㅒ': [[V(9, 3, 21), V(17, 3, 21)], [Hz(9, 9, 17), Hz(15, 9, 17)]],
+      'ㅔ': [[V(10, 3, 21), V(18, 3, 21)], [Hz(12, 4, 10)]],
+      'ㅖ': [[V(10, 3, 21), V(18, 3, 21)], [Hz(9, 4, 10), Hz(15, 4, 10)]],
+      'ㅗ': [[Hz(17, 3, 21)], [V(12, 10, 17)]],
+      'ㅛ': [[Hz(17, 3, 21)], [V(9, 10, 17), V(15, 10, 17)]],
+      'ㅜ': [[Hz(8, 3, 21)], [V(12, 8, 15)]],
+      'ㅠ': [[Hz(8, 3, 21)], [V(9, 8, 15), V(15, 8, 15)]],
+      'ㅡ': [[Hz(12, 3, 21)], []],
+      'ㅣ': [[V(12, 3, 21)], []],
+      'ㅢ': [[Hz(14, 2, 14), V(18, 3, 21)], []],
+      'ㅚ': [[Hz(17, 2, 14), V(18, 3, 21)], [V(8, 11, 17)]],
+      'ㅟ': [[Hz(8, 2, 14), V(18, 3, 21)], [V(8, 8, 14)]],
+      'ㅘ': [[Hz(17, 2, 13), V(17, 3, 21)], [V(7.5, 11, 17), Hz(11, 17, 22)]],
+      'ㅙ': [[Hz(17, 2, 11), V(14, 3, 21), V(20, 3, 21)], [V(6.5, 11, 17), Hz(11, 14, 20)]],
+      'ㅝ': [[Hz(8, 2, 12), V(20, 3, 21)], [V(7, 8, 14), Hz(14, 14, 20)]],
+      'ㅞ': [[Hz(8, 2, 10), V(15, 3, 21), V(21, 3, 21)], [V(6, 8, 14), Hz(14, 10, 15)]],
+    };
+    const line = (l, cls) => '<line' + (cls ? ' class="' + cls + '"' : '') + ' x1="' + l[0] + '" y1="' + l[1] + '" x2="' + l[2] + '" y2="' + l[3] + '"/>';
+    return (v) => {
+      const s = S[v];
+      if (!s) return v;
+      return '<svg class="vg" viewBox="0 0 24 24" role="img" aria-label="' + v + '">' + s[0].map((l) => line(l)).join('') + s[1].map((l) => line(l, 'pr')).join('') + '</svg>';
+    };
+  })();
+  // 글자 풀어 보기: 금 = ㄱ ㅡ ㅁ (자음은 주황, 모음은 튀어나온 획만 보라)
+  const parts = (ch) => {
+    const d = H.decompose(ch);
+    return '<span class="sy"><b>' + ch + '</b><i class="eq">=</i><i class="c">' + d.cho + '</i><i class="v">' + VG(d.jung) + '</i>' + (d.jong ? '<i class="c">' + d.jong + '</i>' : '') + '</span>';
+  };
+
   const RULE_TEXT = {
     vowelOnly: () => '모음 점프만',
     consonantOnly: () => '자음 점프만',
@@ -419,7 +453,7 @@
       const a = H.abilitiesOf(ch);
       const chips = [];
       if (a.consonants) chips.push('<span class="chip o' + (rules.vowelOnly ? ' blocked' : '') + '">' + a.consonants.join('↔') + '</span>');
-      if (a.vector) chips.push('<span class="chip p' + (rules.consonantOnly ? ' blocked' : '') + '">' + arrowGlyph(a.vector) + '</span>');
+      if (a.vector) chips.push('<span class="chip p' + (rules.consonantOnly ? ' blocked' : '') + '">' + VG(H.decompose(ch).jung) + arrowGlyph(a.vector) + '</span>');
       if (!chips.length) chips.push('<span class="chip off">점프 없음</span>');
       return '<div class="ab' + (a.letters.includes(sc) ? ' here' : '') + '"><b>' + ch + '</b>' + chips.join('') + '</div>';
     }).join('');
@@ -1149,41 +1183,59 @@
     if (daily.status === 'playing') state.homeTick = setInterval(() => { if (state.mode === 'home') renderHome(); else clearInterval(state.homeTick); }, 1000);
   }
 
-  const TUT_STEPS = 11;
+  /* ---------- 튜토리얼: 아주 쉬운 단어로 푸는 9문제 ---------- */
+  // 문제마다 개념 하나만 더한다. 자음 점프 3문제 → 모음 점프 4문제 → 섞기 2문제.
+  const TB = (list, start, goal, rules) => ({ tiles: list.map(([x, y, c]) => ({ x, y, c })), start, goal, rules: rules || {} });
+  const O = (t) => '<span class="o">' + t + '</span>';
+  const P = (t) => '<span class="p">' + t + '</span>';
+  const LESSONS = [
+    { title: O('자음 점프') + ' · 한 글자 속 자음으로', answer: '지금',
+      board: TB([[0, 0, 'ㄱ'], [1, 1, 'ㅁ']], [0, 0], [1, 1], { consonantOnly: true }),
+      sub: '말이 선 <b>ㄱ</b>이 들어간 글자만 쓸 수 있어요. 한 글자에 ㄱ과 ㅁ이 같이 있으면 ㄱ에서 ㅁ 칸으로 건너뛰어요.', vis: parts('금') },
+    { title: O('자음 점프') + ' · 받침에서 첫소리로', answer: '선물',
+      board: TB([[1, 0, 'ㄴ'], [0, 1, 'ㅅ']], [1, 0], [0, 1], { consonantOnly: true }),
+      sub: '거꾸로도 돼요. 받침 <b>ㄴ</b>에서 같은 글자의 첫소리 <b>ㅅ</b>으로.', vis: parts('신') },
+    { title: O('자음 점프') + ' · 두 번 이어서', answer: '당장',
+      board: TB([[0, 0, 'ㄷ'], [2, 0, 'ㅇ'], [1, 2, 'ㅈ']], [0, 0], [1, 2], { consonantOnly: true }),
+      sub: '첫 글자로 한 번, 둘째 글자로 또 한 번. 받침 없는 글자는 자음이 하나뿐이라 자음 점프를 못 해요.', vis: parts('동') + parts('가') },
+    { title: P('모음 점프') + ' · 튀어나온 쪽으로', answer: '나무',
+      board: TB([[0, 0, 'ㄴ'], [1, 0, 'ㅁ']], [0, 0], [1, 0], { vowelOnly: true }),
+      sub: '모음은 <b>튀어나온 획</b> 방향으로 뛰어요. ㅏ는 오른쪽으로 튀어나왔으니 오른쪽 한 칸.', vis: parts('나') },
+    { title: P('모음 점프') + ' · 위아래 왼쪽도', answer: '우리',
+      board: TB([[0, 0, 'ㅇ'], [0, 1, 'ㄹ']], [0, 0], [0, 1], { vowelOnly: true }),
+      sub: 'ㅜ는 아래로 튀어나와서 아래 한 칸. ㅗ는 위, ㅓ는 왼쪽이에요.', vis: '<span class="vrow">' + ['ㅜ', 'ㅗ', 'ㅓ'].map((v) => '<i>' + VG(v) + '</i>').join('') + '</span>' },
+    { title: P('모음 점프') + ' · 획 수만큼', answer: '우유',
+      board: TB([[0, 0, 'ㅇ'], [0, 2, 'ㄹ']], [0, 0], [0, 2], { vowelOnly: true }),
+      sub: '획이 두 개면 두 칸. 사이 빈칸은 넘어가요. ㅡ ㅣ는 튀어나온 획이 없어서 모음 점프가 없어요.', vis: '<span class="vrow">' + ['ㅠ', 'ㅑ', 'ㅡ', 'ㅣ'].map((v) => '<i>' + VG(v) + '</i>').join('') + '</span>' },
+    { title: P('모음 점프') + ' · 글자 바꿔 타기', answer: '나라',
+      board: TB([[0, 0, 'ㄴ'], [1, 0, 'ㄹ'], [2, 0, null]], [0, 0], [2, 0], { vowelOnly: true }),
+      sub: '내린 칸의 자음이 든 <b>다른 글자</b>로 이어서 뛰어요. 점프는 두 글자 모두에서 할 수 있어요.' },
+    { title: O('자음') + '과 ' + P('모음') + ' 섞기', answer: '엄마',
+      board: TB([[0, 0, 'ㅇ'], [1, 1, 'ㅁ'], [2, 1, null]], [0, 0], [2, 1]),
+      sub: '자음 점프로 갈아타고, 모음 점프로 마무리해요. 아주 쉬운 단어예요.' },
+    { title: '같은 글자를 여러 번', answer: '사람',
+      board: TB([[0, 0, 'ㅅ'], [1, 0, 'ㅁ'], [2, 0, 'ㄹ'], [3, 0, null]], [0, 0], [3, 0]),
+      sub: '한 글자를 몇 번이든 다시 써도 돼요. 깃발에 닿는 순간 끝이에요.' },
+  ];
+  const TUT_STEPS = LESSONS.length + 1;
 
-  function coachLetters(word, used) {
-    return [...word].map((ch, i) => ({ ch, used: used[i] }));
-  }
-
-  function coach({ step, title, sub, letters, want, wrong, next, keepUsed, fill }) {
-    if (state.mode === 'tutorial' && !fill) $('#dock').hidden = true;
+  function coach({ step, title, sub, vis, next, fill }) {
+    $('#dock').hidden = !fill;
     $('#coach-dots').innerHTML = Array.from({ length: TUT_STEPS }, (_, i) => '<i class="' + (i === step ? 'on' : i < step ? 'done' : '') + '"></i>').join('');
     $('#coach-title').innerHTML = title;
     const subEl = $('#coach-sub');
-    subEl.innerHTML = sub || '';
+    subEl.innerHTML = (sub || '') + (vis ? '<span class="cv">' + vis + '</span>' : '');
     subEl.className = 'coach-sub';
     const box = $('#coach-letters');
     const nextBtn = $('#coach-next');
     box.innerHTML = '';
     const token = state.token;
     return new Promise((resolve) => {
-      (letters || []).forEach((L) => {
-        const b = el('button', 'letter tile3d' + (L.used ? ' ' + L.used : '') + (want && (!L.used || keepUsed) ? ' want' : ''), L.ch);
-        b.type = 'button';
-        b.disabled = !want || (!!L.used && !keepUsed);
-        b.addEventListener('click', () => {
-          if (token !== state.token) return;
-          if (L.ch === want) { box.querySelectorAll('button').forEach((x) => { x.disabled = true; }); resolve(L.ch); return; }
-          b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad');
-          subEl.textContent = wrong;
-          subEl.className = 'coach-sub bad';
-        });
-        box.append(b);
-      });
       if (fill) {
-        const chip = el('button', 'fill-chip', '<b>' + fill + '</b> 넣어 보기');
+        const chip = el('button', 'fill-chip', '정답 보기');
         chip.type = 'button';
         chip.addEventListener('click', () => {
+          chip.innerHTML = '<b>' + fill + '</b> 넣었어요';
           $('#answer').value = fill;
           renderAbilities();
         });
@@ -1197,45 +1249,16 @@
     });
   }
 
-  const FLAG_ICON = FLAG;
-  const CONCEPT = {
-    what: '<div class="concept"><div class="c-row"><span class="c-tile tile3d start">ㅊ</span><span class="c-arrow m">⋯</span><span class="c-tile tile3d goal">' + FLAG_ICON + '</span></div>' +
-      '<div class="c-row"><span class="c-tile word">?</span><span class="c-tile word">?</span></div></div>',
-    cons: '<div class="concept"><div class="c-list">' +
-      '<div class="c-ex"><span class="c-tile tile3d sm">칙</span><span class="c-ex-chips"><span class="chip o">ㅊ↔ㄱ</span></span><span class="c-ex-note">초성↔받침, 양쪽 다 가요</span></div>' +
-      '<div class="c-ex"><span class="c-tile tile3d sm">닭</span><span class="c-ex-chips"><span class="chip o">ㄷ↔ㄹ↔ㄱ</span></span><span class="c-ex-note">겹받침은 자음을 모두 써요</span></div>' +
-      '<div class="c-ex off"><span class="c-tile tile3d sm">꼭</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">ㄲ은 ㄱ이라 한 종류뿐</span></div>' +
-      '<div class="c-ex off"><span class="c-tile tile3d sm">가</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">받침이 없으면 못 해요</span></div>' +
-      '</div></div>',
-    vowel: '<div class="concept"><div class="c-vgrid wide">' +
-      '<span>ㅏ ㅐ <em>→1</em></span><span>ㅑ ㅒ <em>→2</em></span><span>ㅓ ㅔ <em>←1</em></span><span>ㅕ ㅖ <em>←2</em></span>' +
-      '<span>ㅗ ㅚ <em>↑1</em></span><span>ㅛ <em>↑2</em></span><span>ㅜ ㅟ <em>↓1</em></span><span>ㅠ <em>↓2</em></span>' +
-      '<span>ㅘ ㅙ <em>↗1</em></span><span>ㅝ ㅞ <em>↙1</em></span><span class="off">ㅡ ㅣ ㅢ <em>없음</em></span>' +
-      '</div><div class="c-list">' +
-      '<div class="c-ex"><span class="c-tile tile3d sm">규</span><span class="c-ex-chips"><span class="chip p">↓2</span></span><span class="c-ex-note">사이 빈자리는 건너뛰어요</span></div>' +
-      '<div class="c-ex off"><span class="c-tile tile3d sm">그</span><span class="c-ex-chips"><span class="chip off">없음</span></span><span class="c-ex-note">튀어나온 획이 없어요</span></div>' +
-      '</div></div>',
-    more: '<div class="concept"><div class="c-list">' +
-      '<div class="c-ex"><span class="c-ico">ㄱ</span><span class="c-ex-note"><b>같은 자음이 여러 칸</b>이면 그중 어느 칸으로든 자음 점프할 수 있어요</span></div>' +
-      '<div class="c-ex"><span class="c-ico c">' + FLAG_ICON + '</span><span class="c-ex-note"><b>깃발에 닿으면 바로 끝</b>. 깃발 칸에 자음이 있어도 그 칸에서 다시 점프하지 않아요</span></div>' +
-      '<div class="c-ex"><span class="c-ico">✕</span><span class="c-ex-note"><b>점프할 자리에 칸이 없으면</b> 그 점프는 쓸 수 없어요</span></div>' +
-      '<div class="c-ex"><span class="c-ico g">!</span><span class="c-ex-note">판에 따라 <b>추가 조건</b>이 붙어요. <b>모음 점프만</b>, <b>자음 점프만</b>, <b>두 글자 모두 쓰기</b>, <b>모든 칸 밟기</b>(다시 밟아도 됨), <b>모든 칸 한 번씩만</b></span></div>' +
-      '</div></div>',
-    dict: '<div class="concept"><div class="c-book">표준<br>국어<br>대사전</div><div class="c-row"><span class="c-tile word" style="color:var(--mint);border-color:var(--mint)">✓</span><span class="c-tile word" style="color:var(--coral);border-color:var(--coral)">✕</span></div></div>',
-    credit: '<div class="concept c-credit"><span class="show">네 가지 소원</span><span class="ep">EP.2 · 3회전 데스매치 〈숨바꼭질〉</span></div>',
-  };
-
   function tutBoard(board) {
     state.puzzle = { board, answers: [] };
     state.idx = H.makeBoardIndex(board);
+    const rules = activeRules(board);
+    const cond = $('#cond');
+    cond.hidden = !rules.length;
+    cond.className = 'cond';
+    cond.innerHTML = rules.map(([k, v]) => '<span class="rule ' + k + '">' + RULE_TEXT[k](v) + '</span>').join('');
     state.plane = renderBoard($('#board'), board);
     return state.plane;
-  }
-
-  function tutConcept(html) {
-    state.puzzle = null;
-    state.plane = null;
-    $('#board').innerHTML = html;
   }
 
   // 실제 입력창으로 단어를 받아, 맞으면 점프 경로를 돌려준다.
@@ -1260,75 +1283,27 @@
     show('play');
     setChrome('tutorial');
     const title = $('#stage-title');
-    title.textContent = '튜토리얼';
     title.classList.remove('boss');
-    $('#cond').hidden = true;
-
-    // 1부: 판 없이 게임 설명
-    tutConcept(CONCEPT.what);
-    await coach({ step: 0, title: '자모 점프는',
-      sub: '게임판의 <b>초록 출발 칸</b>에서 <b>깃발 칸</b>까지 <span class="o">자음 점프</span>와 <span class="p">모음 점프</span>로 이동할 수 있는 <b>두 글자 단어</b>를 찾는 게임이에요.',
-      next: '다음' });
-    if (!alive()) return;
-    tutConcept(CONCEPT.cons);
-    await coach({ step: 1, title: '<span class="o">자음 점프</span>',
-      sub: '밟고 있는 자음에서 <b>같은 글자 안의 다른 자음 칸</b>으로 건너뛰어요. 받침에서 초성으로도 가요. <b>받침이 없거나 자음이 한 종류뿐</b>인 글자는 자음 점프가 없어요.',
-      next: '다음' });
-    if (!alive()) return;
-    tutConcept(CONCEPT.vowel);
-    await coach({ step: 2, title: '<span class="p">모음 점프</span>',
-      sub: '모음의 획이 튀어나온 방향으로 <b>획 개수만큼</b> 이동해요. ㅘ·ㅝ는 대각선 1칸. <b>ㅡ ㅣ ㅢ</b>는 튀어나온 획이 없어 모음 점프가 없어요.',
-      next: '다음' });
-    if (!alive()) return;
-
-    // 2부: 실제 게임판
-    let plane = tutBoard(EXAMPLE);
-    const spot = (...ps) => {
-      plane.classList.toggle('spot', ps.length > 0);
-      plane.querySelectorAll('.tile').forEach((t) => t.classList.remove('focus'));
-      ps.forEach((p) => tileAt(plane, p).classList.add('focus'));
-    };
-    spot(EXAMPLE.start, EXAMPLE.goal);
-    await coach({ step: 3, title: '실제 판에서 해 봐요',
-      sub: '단, 점프는 <b>지금 밟고 있는 자음이 들어 있는 글자</b>로만 할 수 있어요. 지금 말은 <b>ㅊ</b> 위에 있어요.',
-      next: '다음' });
-    if (!alive()) return;
-    spot();
-    coach({ step: 4, title: '단어를 입력해 보세요',
-      sub: '입력하는 동안 그 글자로 점프할 수 있는 칸마다 <b>흐린 화살표</b>가 보여요. 이 판의 정답은 <b>규칙</b>이에요.',
-      fill: '규칙' });
-    let res = await waitWord();
-    if (!alive()) return;
     const desc = (s) => s.type === 'consonant'
-      ? '<span class="o">' + s.syllable + '</span>' + euro(s.syllable).slice(1) + ' ' + s.fromC + '→' + s.target + ' 자음 점프'
-      : '<span class="p">' + s.syllable + '</span>' + euro(s.syllable).slice(1) + ' ' + arrowGlyph(s.vector) + ' 모음 점프';
-    await coach({ step: 5, title: '클리어!',
-      sub: res.path.map(desc).join(', ') + '. 단어만 입력하면 말이 알아서 길을 찾아요.',
-      next: '다음' });
-    if (!alive()) return;
+      ? O(s.syllable) + euro(s.syllable).slice(1) + ' ' + s.fromC + '→' + s.target
+      : P(s.syllable) + euro(s.syllable).slice(1) + ' ' + VG(H.decompose(s.syllable).jung) + arrowGlyph(s.vector);
 
-    plane = tutBoard(LINE);
-    coach({ step: 6, title: '순서도 횟수도 자유',
-      sub: '자음 점프와 모음 점프는 <b>어떤 순서로든</b>, 한 판에서 <b>몇 번이든</b> 쓸 수 있어요. 같은 글자를 다시 써도 돼요. <b>사람</b>을 입력해 보세요.',
-      fill: '사람' });
-    res = await waitWord();
-    if (!alive()) return;
-    await coach({ step: 7, title: '같은 글자를 두 번 썼어요',
-      sub: res.path.map((s) => '<span class="p">' + s.syllable + '</span>').join(' → ') + ', 점프 ' + res.path.length + '번으로 깃발. 한 글자만 계속 써도 깃발에 닿으면 정답이에요.',
-      next: '다음' });
-    if (!alive()) return;
-
-    tutConcept(CONCEPT.more);
-    await coach({ step: 8, title: '더 알아 둘 것', sub: '실제 판에서 헷갈리기 쉬운 규칙이에요.', next: '다음' });
-    if (!alive()) return;
-    tutConcept(CONCEPT.dict);
-    await coach({ step: 9, title: '사전에 있는 단어만',
-      sub: '정답은 <b>표준국어대사전</b>을 기준으로 한 <b>두 글자 명사</b>만 인정돼요. 사전에 없는 단어는 길이 맞아도 정답이 아니에요. 대신 감점은 없어요.',
-      next: '다음' });
-    if (!alive()) return;
-    tutConcept(CONCEPT.credit);
-    await coach({ step: 10, title: '만든 이야기',
-      sub: '자모 점프는 웹 예능 〈네 가지 소원〉 EP.2의 <b>숨바꼭질</b> 게임을 차용해 만들었어요. <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상 보기</a>',
+    for (let i = 0; i < LESSONS.length; i++) {
+      const L = LESSONS[i];
+      title.textContent = '연습 ' + (i + 1) + ' / ' + LESSONS.length;
+      tutBoard(L.board);
+      coach({ step: i, title: L.title, sub: L.sub, vis: L.vis, fill: L.answer });
+      const res = await waitWord();
+      if (!alive()) return;
+      await coach({ step: i, title: '<span class="m">정답!</span> ' + res.word,
+        sub: res.path.map(desc).join(', ') + (res.path.length > 1 ? '. 점프 ' + res.path.length + '번으로 깃발까지.' : '.'),
+        next: i < LESSONS.length - 1 ? '다음 문제' : '다음' });
+      if (!alive()) return;
+    }
+    $('#cond').hidden = true;
+    title.textContent = '준비 끝';
+    await coach({ step: LESSONS.length, title: '이제 진짜 문제로',
+      sub: '정답은 <b>표준국어대사전</b>에 있는 <b>두 글자 명사</b>만 돼요. 실제 판에는 조건이 붙기도 하는데, 처음 보는 조건은 그때 알려 드릴게요.',
       next: '시작하기' });
     if (!alive()) return;
     finishTutorial();

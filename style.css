@@ -891,3 +891,24 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 .about-maker b { font-size: 15px; font-weight: 800; color: var(--gold); }
 .about-maker span { font-size: 13px; font-weight: 600; color: var(--muted); }
 
+
+/* 모음 그림: 튀어나온 획만 보라 */
+.vg { width: 1.25em; height: 1.25em; vertical-align: -.28em; fill: none; stroke: var(--soft); stroke-width: 2.6; stroke-linecap: round; }
+.vg .pr { stroke: var(--purple); stroke-width: 3.2; }
+.chip.p .vg { width: 15px; height: 15px; margin-right: 2px; vertical-align: -3px; stroke: #CDBBFF; }
+.chip.p .vg .pr { stroke: #fff; }
+.step .vg { width: 14px; height: 14px; vertical-align: -2px; }
+/* 튜토리얼 개념 그림: 금 = ㄱ ㅡ ㅁ */
+.cv { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sy { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 12px; background: var(--ink); border: 1px solid var(--line); }
+.sy b { font-family: var(--display); font-weight: 400; font-size: 20px; color: var(--text); }
+.sy i { font-style: normal; display: grid; place-items: center; min-width: 26px; height: 26px; border-radius: 7px; font-family: var(--display); font-size: 15px; background: var(--tile); }
+.sy i.eq { min-width: 0; background: none; color: var(--dim); font-family: var(--body); }
+.sy i.c { color: var(--orange); box-shadow: inset 0 0 0 1.5px rgba(255, 138, 61, .5); }
+.sy i.v .vg { width: 20px; height: 20px; vertical-align: 0; }
+.vrow { display: inline-flex; gap: 8px; }
+.vrow i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--ink); border: 1px solid var(--line); }
+.vrow .vg { width: 28px; height: 28px; vertical-align: 0; }
+.coach-title .m { color: var(--mint); }
+.fill-chip { opacity: .8; }
+
