@@ -1403,7 +1403,7 @@
   $('#btn-skip').addEventListener('click', finishTutorial);
   $('#btn-about').addEventListener('click', () => openSheet('#about', true));
   // 만든 사람 시트의 스레드 링크. 비어 있으면 팔로우 버튼을 숨긴다.
-  const THREADS_URL = '';
+  const THREADS_URL = 'https://www.threads.com/@wild.tokenflexer';
   if (THREADS_URL) $('#about-threads').href = THREADS_URL;
   else $('.about-cta').hidden = true;
   $('#about-close').addEventListener('click', closeSheets);

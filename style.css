@@ -886,3 +886,8 @@ body.kb .toast { top: calc(var(--vvt, 0px) + 10px); }
 .threads-btn { display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; height: 52px; }
 .threads-btn svg { width: 22px; height: 22px; fill: currentColor; stroke: none; }
 
+
+.about-maker { margin: -2px 0 14px; display: grid; gap: 2px; justify-items: center; text-align: center; }
+.about-maker b { font-size: 15px; font-weight: 800; color: var(--gold); }
+.about-maker span { font-size: 13px; font-weight: 600; color: var(--muted); }
+
