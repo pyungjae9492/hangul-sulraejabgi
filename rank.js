@@ -43,13 +43,19 @@
     return sessionP;
   }
 
-  async function call(action, body) {
+  async function call(action, body, retried) {
     await session();
     const c = await sb();
     const { data, error } = await c.functions.invoke('daily', { body: Object.assign({ action }, body) });
     if (error) {
       let code = error.message;
       try { code = (await error.context.json()).error || code; } catch (e) { /* 그대로 둔다 */ }
+      // 서버에서 계정이 지워졌으면(초기화 등) 이 기기의 로그인을 버리고 새 익명 계정으로 한 번 더 시도한다.
+      if (code === 'auth' && !retried) {
+        await c.auth.signOut({ scope: 'local' }).catch(() => {});
+        sessionP = null;
+        return call(action, body, true);
+      }
       throw new Error(code);
     }
     return data;
