@@ -322,10 +322,10 @@
     $('#timer').hidden = mode !== 'daily';
     $('#clock').hidden = mode !== 'daily';
     const hint = $('#btn-hint');
-    hint.hidden = false;
-    hint.classList.toggle('plain', mode === 'tutorial');
+    hint.hidden = mode === 'tutorial';
     hint.classList.remove('spent', 'arm');
-    hint.textContent = mode === 'tutorial' ? '건너뛰기' : '💡 힌트';
+    hint.textContent = '힌트';
+    $('#btn-skip').hidden = mode !== 'tutorial';
     $('#btn-back').setAttribute('aria-label', mode === 'daily' ? '지도로' : '처음으로');
   }
 
@@ -798,7 +798,7 @@
     const left = MAX_HINTS - hintsUsed();
     b.classList.remove('arm');
     b.classList.toggle('spent', !!daily.hinted[currentStage()] || left <= 0);
-    b.textContent = '💡 ' + left;
+    b.innerHTML = '힌트 <b>' + left + '</b>';
     b.setAttribute('aria-label', '힌트 ' + left + '개 남음');
   }
 
@@ -1384,7 +1384,7 @@
     if (row) pickLevel(row.dataset.level);
   });
   $('#scrim').addEventListener('click', () => {
-    if ($('#levels').classList.contains('open')) closeSheets();
+    if ($('#levels').classList.contains('open') || $('#about').classList.contains('open')) closeSheets();
     else if ($('#rank').classList.contains('open')) closeRank();
   });
   function closeRank() {
@@ -1400,6 +1400,13 @@
     if (!document.hidden && state.mode === 'daily') { syncDaily(); if (daily.status === 'failed' && state.open) timeUp(); }
   });
   $('#btn-hint').addEventListener('click', onHint);
+  $('#btn-skip').addEventListener('click', finishTutorial);
+  $('#btn-about').addEventListener('click', () => openSheet('#about', true));
+  // 만든 사람 시트의 스레드 링크. 비어 있으면 팔로우 버튼을 숨긴다.
+  const THREADS_URL = '';
+  if (THREADS_URL) $('#about-threads').href = THREADS_URL;
+  else $('.about-cta').hidden = true;
+  $('#about-close').addEventListener('click', closeSheets);
   $('#dock').addEventListener('submit', onSubmit);
   $('#answer').addEventListener('input', renderAbilities);
 
