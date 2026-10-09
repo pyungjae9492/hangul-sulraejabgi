@@ -1224,6 +1224,7 @@
     wa: TB([[0, 1, 'ㅇ'], [1, 0, 'ㄹ'], [2, 0, null]], [0, 1], [2, 0]),
     edge: TB([[0, 0, 'ㄴ'], [0, 1, 'ㅁ'], [1, 1, null]], [0, 0], [1, 1]),
     line: TB([[0, 0, 'ㅅ'], [1, 0, 'ㅁ'], [2, 0, 'ㄹ'], [3, 0, null]], [0, 0], [3, 0]),
+    mun: TB([[0, 0, 'ㄴ'], [1, 1, 'ㅁ'], [1, 2, null]], [0, 0], [1, 2]),
   };
   const step = (type, syllable, from, to) => ({ type, syllable, from, to });
   const tour = { tok: 0, i: 0, plane: null };
@@ -1465,6 +1466,20 @@
       await tourJump(step('vowel', '사', [0, 0], [1, 0]));
       await tourJump(step('vowel', '람', [1, 0], [2, 0]));
       await tourJump(step('vowel', '람', [2, 0], [3, 0]));
+    } },
+    { dur: 5600, async run(w) {
+      tourBoard(B.mun);
+      tourVis('<div class="slots"><i class="tile3d">문</i><i class="tile3d">제</i></div>');
+      tourCap('두 글자를 <b>꼭 다 쓸 필요는 없어요</b><br>한 글자만으로 풀리기도 해요');
+      await w(1000);
+      const t = $('#tour-vis').querySelectorAll('.slots i');
+      t[0].classList.add('o-ring');
+      t[1].classList.add('nope');
+      await tourJump(step('consonant', '문', [0, 0], [1, 1]));
+      t[0].classList.remove('o-ring');
+      t[0].classList.add('p-ring');
+      await tourJump(step('vowel', '문', [1, 1], [1, 2]));
+      tourCap('자음 점프도 모음 점프도 ' + o('문') + '으로<br><b>문</b> 한 글자로 깃발 도착!');
     } },
     { dur: 4200, async run(w) {
       tourBoard(null);
