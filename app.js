@@ -1368,23 +1368,29 @@
     } },
   ];
 
+  const TOUR_PACE = 1.5;
+  const TOUR_GAP = 1.25;
+
   function playScene(i) {
     if (i < 0) i = 0;
     if (i >= TOUR.length) return;
     const tok = ++tour.tok;
     tour.i = i;
     const alive = () => tok === tour.tok && state.mode === 'tour';
-    const w = (ms) => new Promise((res, rej) => setTimeout(() => (alive() ? res() : rej(STOP)), reduceMotion ? Math.min(ms, 400) : ms));
+    // 읽을 시간을 넉넉히: 장면 길이는 1.5배, 장면 안의 움직임 사이 간격은 1.25배로 늘린다.
+    const wait = (ms) => new Promise((res, rej) => setTimeout(() => (alive() ? res() : rej(STOP)), reduceMotion ? Math.min(ms, 400) : ms));
+    const w = (ms) => wait(ms * TOUR_GAP);
     const sc = TOUR[i];
+    const dur = sc.dur * TOUR_PACE;
     $('#tour-end').hidden = true;
     $('#tour-hint').hidden = i > 1 || !sc.dur;
-    $('#tour-bar').innerHTML = TOUR.map((s, k) => '<span class="' + (k < i ? 'done' : k === i ? 'on' : '') + '"><i style="--d:' + (s.dur || 1) + 'ms"></i></span>').join('');
+    $('#tour-bar').innerHTML = TOUR.map((s, k) => '<span class="' + (k < i ? 'done' : k === i ? 'on' : '') + '"><i style="--d:' + (s.dur * TOUR_PACE || 1) + 'ms"></i></span>').join('');
     tourVis('');
     const t0 = performance.now();
     sc.run(w).then(async () => {
-      if (!sc.dur) return;
-      const left = sc.dur - (performance.now() - t0);
-      if (left > 0) await w(left);
+      if (!dur) return;
+      const left = dur - (performance.now() - t0);
+      if (left > 0) await wait(left);
       if (alive()) playScene(i + 1);
     }).catch((e) => { if (e !== STOP) console.error(e); });
   }
