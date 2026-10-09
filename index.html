@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
 </head>
 <body>
   <div id="app">
@@ -37,6 +37,7 @@
       <div id="tower-wrap" class="tower-wrap"><div id="tower" class="tower"></div></div>
       <footer class="map-foot">
         <button id="map-play" class="play-btn" type="button"></button>
+        <p class="map-credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요 · <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상</a></p>
       </footer>
     </section>
 
@@ -55,6 +56,15 @@
       <p id="cond" class="cond" hidden></p>
       <div id="board" class="board-host"></div>
 
+      <div class="bottom">
+      <div id="coach" class="coach" hidden>
+        <div id="coach-dots" class="coach-dots" aria-hidden="true"></div>
+        <p id="coach-title" class="coach-title"></p>
+        <p id="coach-sub" class="coach-sub"></p>
+        <div id="coach-letters" class="coach-letters"></div>
+        <button id="coach-next" class="btn-primary wide" type="button"></button>
+      </div>
+
       <form id="dock" class="dock" autocomplete="off">
         <div id="abilities" class="abilities" aria-live="polite"></div>
         <div class="field" id="field">
@@ -65,13 +75,6 @@
           </button>
         </div>
       </form>
-
-      <div id="coach" class="coach" hidden>
-        <div id="coach-dots" class="coach-dots" aria-hidden="true"></div>
-        <p id="coach-title" class="coach-title"></p>
-        <p id="coach-sub" class="coach-sub"></p>
-        <div id="coach-letters" class="coach-letters"></div>
-        <button id="coach-next" class="btn-primary wide" type="button"></button>
       </div>
     </section>
   </div>
@@ -105,15 +108,16 @@
     <p class="kicker ok">20 스테이지 완주</p>
     <h2 id="end-title" class="verdict">정상</h2>
     <p id="end-stars" class="end-stars"></p>
+    <p class="end-credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요.</p>
     <div class="sheet-actions">
       <button id="end-share" class="btn-primary wide" type="button">공유</button>
       <button id="end-map" class="btn-text" type="button">지도</button>
     </div>
   </section>
 
-  <script src="words.js?v=8"></script>
-  <script src="engine.js?v=8"></script>
-  <script src="stages.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="words.js?v=9"></script>
+  <script src="engine.js?v=9"></script>
+  <script src="stages.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

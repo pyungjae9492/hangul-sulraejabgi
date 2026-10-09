@@ -124,7 +124,7 @@
     const sx = x1 + ux * 0.42, sy = y1 + uy * 0.42;
     const ex = x2 - ux * 0.4, ey = y2 - uy * 0.4;
     const f = (n) => n.toFixed(3);
-    const grp = svgEl('g', { class: o.faint ? 'faint' : '' });
+    const grp = svgEl('g', { class: o.faint ? 'faint' + (o.far ? ' far' : '') : '' });
     const line = svgEl('line', { x1: f(sx), y1: f(sy), x2: f(ex), y2: f(ey), stroke: color, 'stroke-width': o.faint ? 0.06 : 0.1, 'stroke-linecap': 'round' });
     const pts = [[ex + ux * 0.22, ey + uy * 0.22], [ex + px * 0.15, ey + py * 0.15], [ex - px * 0.15, ey - py * 0.15]];
     const head = svgEl('polygon', { class: 'head', points: pts.map((p) => f(p[0]) + ',' + f(p[1])).join(' '), fill: color });
@@ -272,6 +272,7 @@
   /* ---------- 스테이지 ---------- */
   function setChrome(mode) {
     $('#dock').hidden = mode !== 'stage';
+    state.tutWait = null;
     $('#coach').hidden = mode !== 'tutorial';
     $('#prog').hidden = mode !== 'stage';
     const hint = $('#btn-hint');
@@ -374,16 +375,36 @@
     drawPreview();
   }
 
-  // 출발 칸에서 입력한 글자로 할 수 있는 첫 점프를 흐리게 보여준다.
+  // 입력한 글자로 점프할 수 있는 모든 칸에 흐린 화살표를 그린다.
+  // 출발 칸에서 실제로 이어지는 화살표는 진하게, 닿을 수 없는 칸의 화살표는 더 흐리게.
   function drawPreview() {
-    if (!state.plane || state.mode !== 'stage') return;
+    if (!state.plane || !state.puzzle) return;
     const g = state.plane.querySelector('.g-preview');
     g.innerHTML = '';
     if (!state.open || state.busy) return;
     const board = state.puzzle.board;
-    for (const ch of typed()) {
-      for (const m of H.movesFrom(state.idx, board.start, H.abilitiesOf(ch), H.rulesOf(board))) {
-        drawArrow(g, board.start, m.to, m.type === 'consonant' ? ORANGE : PURPLE, { faint: true });
+    const rules = H.rulesOf(board);
+    const abil = typed().map(H.abilitiesOf);
+    if (!abil.length) return;
+    const isGoal = (p) => p[0] === board.goal[0] && p[1] === board.goal[1];
+    const reach = new Set([board.start.join()]);
+    const queue = [board.start];
+    for (let i = 0; i < queue.length; i++) {
+      if (isGoal(queue[i])) continue;
+      for (const ab of abil) for (const m of H.movesFrom(state.idx, queue[i], ab, rules)) {
+        const k = m.to.join();
+        if (!reach.has(k)) { reach.add(k); queue.push(m.to); }
+      }
+    }
+    const drawn = new Set();
+    for (const t of board.tiles) {
+      const p = [t.x, t.y];
+      if (isGoal(p)) continue;
+      for (const ab of abil) for (const m of H.movesFrom(state.idx, p, ab, rules)) {
+        const k = p.join() + '>' + m.to.join();
+        if (drawn.has(k)) continue;
+        drawn.add(k);
+        drawArrow(g, p, m.to, m.type === 'consonant' ? ORANGE : PURPLE, { faint: true, far: !reach.has(p.join()) });
       }
     }
   }
@@ -404,6 +425,21 @@
       return;
     }
     const path = H.findPath(state.puzzle.board, raw);
+    if (path && state.mode === 'tutorial') {
+      state.open = false;
+      state.busy = true;
+      setInput(false);
+      $('#answer').blur();
+      drawPreview();
+      const token = state.token;
+      await playPath(state.plane, state.puzzle.board, path, () => token === state.token);
+      if (token !== state.token) return;
+      state.busy = false;
+      const done = state.tutWait;
+      state.tutWait = null;
+      if (done) done({ word: raw, path });
+      return;
+    }
     if (path) { clearStage(raw, path, false); return; }
     await showMiss(raw);
   }
@@ -527,17 +563,18 @@
   }
 
   /* ---------- 튜토리얼 ---------- */
-  const TUT_STEPS = 9;
+  const TUT_STEPS = 10;
 
   function coachLetters(word, used) {
     return [...word].map((ch, i) => ({ ch, used: used[i] }));
   }
 
-  function coach({ step, title, sub, letters, want, wrong, next, keepUsed }) {
+  function coach({ step, title, sub, letters, want, wrong, next, keepUsed, fill }) {
+    if (state.mode === 'tutorial' && !fill) $('#dock').hidden = true;
     $('#coach-dots').innerHTML = Array.from({ length: TUT_STEPS }, (_, i) => '<i class="' + (i === step ? 'on' : i < step ? 'done' : '') + '"></i>').join('');
     $('#coach-title').innerHTML = title;
     const subEl = $('#coach-sub');
-    subEl.textContent = sub || '';
+    subEl.innerHTML = sub || '';
     subEl.className = 'coach-sub';
     const box = $('#coach-letters');
     const nextBtn = $('#coach-next');
@@ -557,12 +594,58 @@
         });
         box.append(b);
       });
+      if (fill) {
+        const chip = el('button', 'fill-chip', '<b>' + fill + '</b> 넣어 보기');
+        chip.type = 'button';
+        chip.addEventListener('click', () => {
+          $('#answer').value = fill;
+          renderAbilities();
+        });
+        box.append(chip);
+      }
       nextBtn.hidden = !next;
       if (next) {
         nextBtn.textContent = next;
         nextBtn.onclick = () => { if (token === state.token) resolve('next'); };
       }
     });
+  }
+
+  const FLAG_ICON = FLAG;
+  const CONCEPT = {
+    what: '<div class="concept"><div class="c-row"><span class="c-tile tile3d start">ㅊ</span><span class="c-arrow m">⋯</span><span class="c-tile tile3d goal">' + FLAG_ICON + '</span></div>' +
+      '<div class="c-row"><span class="c-tile word">?</span><span class="c-tile word">?</span></div></div>',
+    cons: '<div class="concept"><div class="c-row"><span class="c-tile tile3d big">칙</span><span class="c-eq">=</span><span class="c-jamo o">ㅊ</span><span class="c-jamo">ㅣ</span><span class="c-jamo o">ㄱ</span></div>' +
+      '<div class="c-row"><span class="c-tile tile3d start">ㅊ</span><span class="c-arrow o">→</span><span class="c-tile tile3d">ㄱ</span></div></div>',
+    vowel: '<div class="concept"><div class="c-row"><span class="c-tile tile3d big">규</span><span class="c-eq">=</span><span class="c-jamo">ㄱ</span><span class="c-jamo p">ㅠ</span></div>' +
+      '<div class="c-vgrid"><span>ㅏ →1</span><span>ㅑ →2</span><span>ㅓ ←1</span><span>ㅕ ←2</span><span>ㅗ ↑1</span><span>ㅛ ↑2</span><span>ㅜ ↓1</span><span>ㅠ ↓2</span><span>ㅘ ↗1</span><span>ㅝ ↙1</span><span class="off">ㅡ 없음</span><span class="off">ㅣ 없음</span></div></div>',
+    dict: '<div class="concept"><div class="c-book">표준<br>국어<br>대사전</div><div class="c-row"><span class="c-tile word" style="color:var(--mint);border-color:var(--mint)">✓</span><span class="c-tile word" style="color:var(--coral);border-color:var(--coral)">✕</span></div></div>',
+    credit: '<div class="concept c-credit"><span class="show">네 가지 소원</span><span class="ep">EP.2 · 3회전 데스매치 〈숨바꼭질〉</span></div>',
+  };
+
+  function tutBoard(board) {
+    state.puzzle = { board, answers: [] };
+    state.idx = H.makeBoardIndex(board);
+    state.plane = renderBoard($('#board'), board);
+    return state.plane;
+  }
+
+  function tutConcept(html) {
+    state.puzzle = null;
+    state.plane = null;
+    $('#board').innerHTML = html;
+  }
+
+  // 실제 입력창으로 단어를 받아, 맞으면 점프 경로를 돌려준다.
+  function waitWord() {
+    $('#dock').hidden = false;
+    $('#answer').value = '';
+    state.open = true;
+    state.busy = false;
+    setInput(true);
+    renderAbilities();
+    if (finePointer) $('#answer').focus();
+    return new Promise((resolve) => { state.tutWait = resolve; });
   }
 
   async function runTutorial() {
@@ -578,77 +661,76 @@
     title.textContent = '튜토리얼';
     title.classList.remove('boss');
     $('#cond').hidden = true;
-    let board = EXAMPLE;
-    let plane = renderBoard($('#board'), board);
-    state.plane = plane;
+
+    // 1부: 판 없이 게임 설명
+    tutConcept(CONCEPT.what);
+    await coach({ step: 0, title: '자모 점프는',
+      sub: '게임판의 <b>초록 출발 칸</b>에서 <b>깃발 칸</b>까지 <span class="o">자음 점프</span>와 <span class="p">모음 점프</span>로 이동할 수 있는 <b>두 글자 단어</b>를 찾는 게임이에요.',
+      next: '다음' });
+    if (!alive()) return;
+    tutConcept(CONCEPT.cons);
+    await coach({ step: 1, title: '<span class="o">자음 점프</span>',
+      sub: '밟고 있는 자음에서 <b>같은 글자 안의 다른 자음 칸</b>으로 건너뛰어요. ㅊ 칸에서 <b>칙</b>을 쓰면 ㄱ 칸으로 가요.',
+      next: '다음' });
+    if (!alive()) return;
+    tutConcept(CONCEPT.vowel);
+    await coach({ step: 2, title: '<span class="p">모음 점프</span>',
+      sub: '모음의 획이 튀어나온 방향으로 <b>획 개수만큼</b> 이동해요. ㄱ 칸에서 <b>규</b>를 쓰면 아래로 2칸.',
+      next: '다음' });
+    if (!alive()) return;
+
+    // 2부: 실제 게임판
+    let plane = tutBoard(EXAMPLE);
     const spot = (...ps) => {
       plane.classList.toggle('spot', ps.length > 0);
       plane.querySelectorAll('.tile').forEach((t) => t.classList.remove('focus'));
       ps.forEach((p) => tileAt(plane, p).classList.add('focus'));
     };
-    const path = H.findPath(EXAMPLE, '규칙');
-
-    spot(board.start);
-    await coach({ step: 0, title: '<span class="m">초록 칸</span>에서 출발해요', sub: '그 위의 금색 말이 나예요.', next: '다음' });
-    if (!alive()) return;
-    spot(board.goal);
-    await coach({ step: 1, title: '<span class="c">깃발</span>까지 가면 클리어', sub: '두 글자 단어 하나로 점프해서 가요.', next: '다음' });
-    if (!alive()) return;
-    spot(board.start);
-    await coach({
-      step: 2, title: '지금 밟은 자음은 <span class="m">ㅊ</span>', sub: 'ㅊ이 들어 있는 글자만 쓸 수 있어요. 눌러 보세요.',
-      letters: coachLetters('규칙', []), want: '칙', wrong: '규에는 ㅊ이 없어요. 다른 글자!',
-    });
+    spot(EXAMPLE.start, EXAMPLE.goal);
+    await coach({ step: 3, title: '실제 판에서 해 봐요',
+      sub: '단, 점프는 <b>지금 밟고 있는 자음이 들어 있는 글자</b>로만 할 수 있어요. 지금 말은 <b>ㅊ</b> 위에 있어요.',
+      next: '다음' });
     if (!alive()) return;
     spot();
-    await playStep(plane, path[0]);
+    coach({ step: 4, title: '단어를 입력해 보세요',
+      sub: '입력하는 동안 그 글자로 점프할 수 있는 칸마다 <b>흐린 화살표</b>가 보여요. 이 판의 정답은 <b>규칙</b>이에요.',
+      fill: '규칙' });
+    let res = await waitWord();
     if (!alive()) return;
-    await coach({ step: 3, title: '<span class="o">자음 점프!</span>', sub: '칙 안의 다른 자음 ㄱ 칸으로 건너뛰었어요.', letters: coachLetters('규칙', [null, 'o']), next: '다음' });
-    if (!alive()) return;
-    spot(path[0].to);
-    await coach({
-      step: 4, title: '이제 <span class="m">ㄱ</span> 위예요', sub: '규에도 ㄱ이 들어 있죠. 눌러 보세요.',
-      letters: coachLetters('규칙', [null, 'o']), want: '규', wrong: '',
-    });
-    if (!alive()) return;
-    spot();
-    await playStep(plane, path[1]);
-    if (!alive()) return;
-    await coach({ step: 5, title: '<span class="p">모음 점프!</span>', sub: 'ㅠ는 획이 아래로 두 개라서 아래로 2칸.', letters: coachLetters('규칙', ['p', 'o']), next: '다음' });
+    const desc = (s) => s.type === 'consonant'
+      ? '<span class="o">' + s.syllable + '</span>' + euro(s.syllable).slice(1) + ' ' + s.fromC + '→' + s.target + ' 자음 점프'
+      : '<span class="p">' + s.syllable + '</span>' + euro(s.syllable).slice(1) + ' ' + arrowGlyph(s.vector) + ' 모음 점프';
+    await coach({ step: 5, title: '클리어!',
+      sub: res.path.map(desc).join(', ') + '. 단어만 입력하면 말이 알아서 길을 찾아요.',
+      next: '다음' });
     if (!alive()) return;
 
-    // 두 번째 판: 같은 글자를 다시 쓴다
-    board = LINE;
-    plane = renderBoard($('#board'), board);
-    state.plane = plane;
-    const idx = H.makeBoardIndex(board);
-    const seq = [['사', 'ㅅ'], ['람', 'ㅁ'], ['람', 'ㄹ']];
-    const used = [null, null];
-    let pos = board.start;
-    spot(pos);
-    await coach({ step: 6, title: '글자는 <span class="m">몇 번이든</span> 다시 써요', sub: '점프 횟수도 자유예요. 이번엔 사람으로 가 볼게요.', next: '해 보기' });
+    plane = tutBoard(LINE);
+    coach({ step: 6, title: '순서도 횟수도 자유',
+      sub: '자음 점프와 모음 점프는 <b>어떤 순서로든</b>, 한 판에서 <b>몇 번이든</b> 쓸 수 있어요. 같은 글자를 다시 써도 돼요. <b>사람</b>을 입력해 보세요.',
+      fill: '사람' });
+    res = await waitWord();
     if (!alive()) return;
-    for (let i = 0; i < seq.length; i++) {
-      const [want, c] = seq[i];
-      spot(pos);
-      await coach({
-        step: 7, title: '<span class="m">' + c + '</span> 위예요. 어느 글자?', sub: i === 2 ? '람을 한 번 더 써요!' : c + '이 들어 있는 글자를 눌러요.',
-        letters: coachLetters('사람', used), want, wrong: c + '이 없는 글자예요.', keepUsed: true,
-      });
-      if (!alive()) return;
-      spot();
-      const mv = H.movesFrom(idx, pos, H.abilitiesOf(want), { vowelOnly: true })[0];
-      await playStep(plane, Object.assign({ syllable: want, from: pos }, mv));
-      if (!alive()) return;
-      used[want === '사' ? 0 : 1] = 'p';
-      pos = mv.to;
-    }
-    await coach({ step: 8, title: '클리어! 이제 직접 해 봐요', sub: '단어를 입력하면 말이 알아서 길을 찾아 점프해요.', letters: coachLetters('사람', used), next: '스테이지 1 시작' });
+    await coach({ step: 7, title: '같은 글자를 두 번 썼어요',
+      sub: res.path.map((s) => '<span class="p">' + s.syllable + '</span>').join(' → ') + ', 점프 ' + res.path.length + '번으로 깃발. 대신 <b>두 글자 모두 한 번은</b> 써야 해요.',
+      next: '다음' });
+    if (!alive()) return;
+
+    tutConcept(CONCEPT.dict);
+    await coach({ step: 8, title: '사전에 있는 단어만',
+      sub: '정답은 <b>표준국어대사전</b>을 기준으로 한 <b>두 글자 명사</b>만 인정돼요. 사전에 없는 단어는 길이 맞아도 정답이 아니에요. 대신 감점은 없어요.',
+      next: '다음' });
+    if (!alive()) return;
+    tutConcept(CONCEPT.credit);
+    await coach({ step: 9, title: '만든 이야기',
+      sub: '자모 점프는 웹 예능 〈네 가지 소원〉 EP.2의 <b>숨바꼭질</b> 게임을 차용해 만들었어요. <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상 보기</a>',
+      next: '스테이지 1 시작' });
     if (!alive()) return;
     finishTutorial();
   }
 
   function finishTutorial() {
+    state.tutWait = null;
     progress.tut = true;
     saveProgress();
     if (progress.best > 0) openMap();

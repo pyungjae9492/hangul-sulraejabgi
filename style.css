@@ -165,6 +165,9 @@ b { font-weight: 800; }
 }
 .play-btn:active { transform: scale(.98); }
 .play-btn small { font-family: var(--body); font-size: 13px; font-weight: 800; color: var(--coral); }
+.map-credit { margin: 10px 0 0; text-align: center; font-size: 12px; color: var(--dim); }
+.map-credit a { color: var(--muted); }
+.end-credit { margin: 10px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
 .play-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- 플레이 ---------- */
@@ -257,6 +260,7 @@ b { font-weight: 800; }
 .lines text { font-family: var(--display); font-size: .34px; paint-order: stroke; stroke: var(--ink); stroke-width: .09px; stroke-linejoin: round; }
 .lines .head, .lines text { transition: opacity .2s ease; }
 .lines .faint { opacity: .5; }
+.lines .faint.far { opacity: .18; }
 
 .pawn {
   position: absolute;
@@ -281,7 +285,7 @@ b { font-weight: 800; }
 }
 
 /* ---------- 입력 ---------- */
-.dock, .coach {
+.bottom {
   position: sticky;
   bottom: 0;
   z-index: 5;
@@ -292,6 +296,8 @@ b { font-weight: 800; }
   border-top: 1px solid var(--line);
   box-shadow: 0 -18px 40px rgba(0, 0, 0, .45);
 }
+.bottom:has(> .coach[hidden]):has(> .dock[hidden]) { display: none; }
+.coach + .dock:not([hidden]) { margin-top: 14px; }
 .abilities { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; min-height: 32px; margin-bottom: 10px; }
 .prompt { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
 .jamo, .hint-tile {
@@ -354,21 +360,52 @@ b { font-weight: 800; }
 .btn-text { height: 44px; font-size: 15px; font-weight: 700; color: var(--muted); }
 
 /* ---------- 튜토리얼 코치 ---------- */
-.coach { padding-top: 16px; animation: coachIn .35s cubic-bezier(.2, .85, .2, 1); }
+.coach { padding-top: 2px; animation: coachIn .35s cubic-bezier(.2, .85, .2, 1); }
 @keyframes coachIn { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
 .coach-dots { display: flex; gap: 5px; margin-bottom: 14px; }
 .coach-dots i { width: 6px; height: 6px; border-radius: 3px; background: var(--tile); transition: width .25s, background .25s; }
 .coach-dots i.on { width: 18px; background: var(--text); }
 .coach-dots i.done { background: var(--dim); }
-.coach-title { margin: 0; font-family: var(--display); font-size: 27px; line-height: 1.25; }
+.coach-title { margin: 0; font-family: var(--display); font-size: 25px; line-height: 1.3; }
 .coach-title .o { color: var(--orange); }
 .coach-title .p { color: var(--purple-text); }
 .coach-title .m { color: var(--mint); }
 .coach-title .c { color: var(--coral); }
-.coach-sub { margin: 6px 0 0; min-height: 22px; font-size: 15px; line-height: 1.55; color: var(--muted); }
+.coach-sub { margin: 6px 0 0; min-height: 22px; font-size: 15px; line-height: 1.6; color: var(--soft); }
+.coach-sub b { color: var(--text); }
+.coach-sub .o { color: var(--orange); }
+.coach-sub .p { color: var(--purple-text); }
+.coach-sub a { color: var(--text); }
 .coach-sub.bad { color: var(--coral); }
 .coach-letters { display: flex; gap: 10px; margin-top: 16px; }
 .coach-letters:empty { display: none; }
+.fill-chip { height: 40px; padding: 0 14px; border-radius: 12px; background: #1F2128; border: 1px dashed #3A3D48; font-size: 14px; font-weight: 700; color: var(--soft); }
+.fill-chip b { font-family: var(--display); font-weight: 400; color: var(--text); margin: 0 2px; }
+
+/* 튜토리얼 개념 그림 (판이 나오기 전) */
+.concept { display: grid; gap: 22px; justify-items: center; align-content: center; padding: 10px 0; }
+.c-row { display: flex; gap: 10px; align-items: center; }
+.c-tile { width: 62px; height: 62px; border-radius: 15px; font-size: 30px; position: relative; }
+.c-tile.start { box-shadow: inset 0 0 0 3px var(--mint), inset 0 1px 0 rgba(255,255,255,.09), 0 7px 0 var(--side); }
+.c-tile.goal { color: var(--coral); background: linear-gradient(180deg, #43292E, #321F23 70%); box-shadow: inset 0 0 0 3px var(--coral), 0 7px 0 var(--side); }
+.c-tile.goal svg { width: 42%; }
+.c-tile.word { background: transparent; box-shadow: none; border: 2px dashed #3A3D48; color: var(--dim); font-size: 26px; }
+.c-tile.big { width: 76px; height: 76px; font-size: 40px; }
+.c-eq { font-size: 22px; font-weight: 800; color: var(--dim); }
+.c-jamo { width: 42px; height: 42px; border-radius: 11px; font-size: 22px; color: var(--dim); background: #1F2128; display: grid; place-items: center; font-family: var(--display); }
+.c-jamo.o { color: var(--orange); background: rgba(255,138,61,.15); box-shadow: inset 0 0 0 2px rgba(255,138,61,.5); }
+.c-jamo.p { color: var(--purple-text); background: rgba(155,107,255,.16); box-shadow: inset 0 0 0 2px rgba(155,107,255,.5); }
+.c-arrow { font-size: 26px; font-weight: 900; }
+.c-arrow.o { color: var(--orange); }
+.c-arrow.p { color: var(--purple-text); }
+.c-arrow.m { color: var(--dim); }
+.c-vgrid { display: grid; grid-template-columns: repeat(4, auto); gap: 6px; }
+.c-vgrid span { padding: 7px 10px; border-radius: 10px; background: #1F2128; font-size: 14px; font-weight: 800; color: var(--purple-text); white-space: nowrap; }
+.c-vgrid span.off { color: var(--dim); }
+.c-book { width: 86px; height: 104px; border-radius: 10px 16px 16px 10px; display: grid; place-items: center; font-family: var(--display); font-size: 24px; line-height: 1.2; text-align: center; background: linear-gradient(180deg, #3A3D48, #2E3039); box-shadow: inset 6px 0 0 #23252D, 0 7px 0 var(--side); }
+.c-credit { text-align: center; display: grid; gap: 8px; justify-items: center; }
+.c-credit .show { font-family: var(--display); font-size: 30px; }
+.c-credit .ep { font-size: 14px; font-weight: 700; color: var(--muted); }
 .letter {
   width: 64px; height: 64px;
   border-radius: 16px;
@@ -479,7 +516,7 @@ b { font-weight: 800; }
 .end-stars { margin: 0; text-align: center; font-size: 18px; font-weight: 800; color: var(--soft); }
 
 @media (min-width: 560px) {
-  .dock, .coach { margin: 0 0 16px; border-radius: 24px; border: 1px solid var(--line); }
+  .bottom { margin: 0 0 16px; border-radius: 24px; border: 1px solid var(--line); }
 }
 @media (max-height: 700px) {
   #board { padding: 10px 0 16px; }
