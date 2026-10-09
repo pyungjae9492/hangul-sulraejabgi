@@ -135,3 +135,18 @@ test('경로 단계는 좌표(from/to)를 정확히 가진다', () => {
   assert.deepEqual(path[1].from, [1, 1]);
   assert.deepEqual(path[1].to, [1, 3]);
 });
+
+test('20개 스테이지: 모든 정답이 실제로 통하고, 5스테이지마다 보스이며 보스 정답은 1~2개', () => {
+  global.window = global.window || {};
+  require('../stages.js');
+  const stages = window.STAGES;
+  assert.equal(stages.length, 20);
+  stages.forEach((st, i) => {
+    assert.equal(st.n, i + 1);
+    assert.equal(st.boss, (i + 1) % 5 === 0);
+    assert.ok(st.answers.length >= 1);
+    if (st.boss) assert.ok(st.answers.length <= 2);
+    for (const w of st.answers) assert.ok(H.findPath(st.board, w), st.n + ' ' + w);
+  });
+});
+
