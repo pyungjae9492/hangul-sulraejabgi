@@ -2,6 +2,7 @@
   'use strict';
 
   const H = window.HangulHide;
+  const Gen = window.JamoGen;
   const WORDS = window.WORDS || [];
   const WORD_SET = new Set(WORDS.concat(window.WORDS_EXTRA || []));
   const STAGES = window.STAGES || [];
@@ -30,7 +31,7 @@
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const finePointer = matchMedia('(pointer: fine)').matches;
 
-  const progress = Object.assign({ best: 0, stars: {}, tut: false, seen: {} }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
+  const progress = Object.assign({ best: 0, stars: {}, tut: false, seen: {}, endless: {}, used: {}, level: 'normal' }, JSON.parse(localStorage.getItem(STORE_KEY) || '{}'));
   const saveProgress = () => localStorage.setItem(STORE_KEY, JSON.stringify(progress));
 
   const state = { mode: null, stage: 0, puzzle: null, idx: null, plane: null, open: false, busy: false, hints: 0, hintAnswer: null, token: 0 };
@@ -269,15 +270,21 @@
     renderMap();
   }
 
-  /* ---------- 스테이지 ---------- */
+  /* ---------- 판 띄우기 (스테이지·무한·도전 공통) ---------- */
   function setChrome(mode) {
-    $('#dock').hidden = mode !== 'stage';
+    const playing = mode === 'stage' || mode === 'endless' || mode === 'daily';
+    $('#dock').hidden = !playing;
     state.tutWait = null;
     $('#coach').hidden = mode !== 'tutorial';
     $('#prog').hidden = mode !== 'stage';
+    $('#bar-sub').hidden = !(mode === 'endless' || mode === 'daily');
+    $('#timer').hidden = mode !== 'daily';
+    $('#clock').hidden = mode !== 'daily';
     const hint = $('#btn-hint');
+    hint.hidden = mode === 'daily';
     hint.classList.toggle('plain', mode === 'tutorial');
     hint.textContent = mode === 'tutorial' ? '건너뛰기' : '💡 힌트';
+    $('#btn-back').setAttribute('aria-label', mode === 'stage' ? '지도로' : '처음으로');
   }
 
   function renderProg(n) {
@@ -287,40 +294,53 @@
     }).join('');
   }
 
-  function startStage(n) {
-    const st = STAGES[n - 1];
+  function loadPuzzle(mode, board, words) {
     state.token++;
-    state.mode = 'stage';
-    state.stage = n;
-    state.puzzle = { board: st.board, answers: st.answers.map((w) => ({ word: w, path: H.findPath(st.board, w) })).filter((a) => a.path) };
-    state.idx = H.makeBoardIndex(st.board);
+    state.mode = mode;
+    state.puzzle = { board, answers: words.map((w) => ({ word: w, path: H.findPath(board, w) })).filter((a) => a.path) };
+    state.idx = H.makeBoardIndex(board);
     state.hints = 0;
     state.hintAnswer = null;
     state.open = true;
     state.busy = false;
     closeSheets();
     show('play');
-    setChrome('stage');
-    const title = $('#stage-title');
-    title.textContent = st.boss ? st.title : '스테이지 ' + n;
-    title.classList.toggle('boss', st.boss);
-    renderProg(n);
-    const rules = activeRules(st.board);
+    setChrome(mode);
+    $('#stage-title').classList.remove('boss');
+    const rules = activeRules(board);
     const cond = $('#cond');
     cond.hidden = !rules.length;
     cond.className = 'cond';
     cond.innerHTML = rules.map(([k, v]) => '<span class="rule ' + k + '">' + RULE_TEXT[k](v) + '</span>').join('');
-    state.plane = renderBoard($('#board'), st.board);
+    state.plane = renderBoard($('#board'), board);
     $('#answer').value = '';
     setInput(true);
     renderAbilities();
+    return rules;
+  }
 
+  function startStage(n) {
+    const st = STAGES[n - 1];
+    state.stage = n;
+    const rules = loadPuzzle('stage', st.board, st.answers);
+    const title = $('#stage-title');
+    title.textContent = st.boss ? st.title : '스테이지 ' + n;
+    title.classList.toggle('boss', st.boss);
+    renderProg(n);
     const fresh = rules.map(([k]) => k).find((k) => !progress.seen[k]);
     if (st.boss || fresh) showIntro(st, fresh);
     else if (finePointer) $('#answer').focus();
   }
 
+  function showRuleIntro(rules) {
+    const fresh = rules.map(([k]) => k).find((k) => !progress.seen[k]);
+    if (!fresh) return false;
+    showIntro({ boss: false, board: state.puzzle.board }, fresh);
+    return true;
+  }
+
   function showIntro(st, fresh) {
+    state.introGo = null;
     const badge = $('#intro-badge');
     const rules = activeRules(st.board);
     if (fresh) { progress.seen[fresh] = true; saveProgress(); }
@@ -440,7 +460,12 @@
       if (done) done({ word: raw, path });
       return;
     }
-    if (path) { clearStage(raw, path, false); return; }
+    if (path) {
+      if (state.mode === 'endless') clearEndless(raw, path, false);
+      else if (state.mode === 'daily') clearDaily(raw, path);
+      else clearStage(raw, path, false);
+      return;
+    }
     await showMiss(raw);
   }
 
@@ -480,7 +505,7 @@
     toast(msg, 'bad');
     if (navigator.vibrate) navigator.vibrate(80);
     await sleep(1300);
-    if (token !== state.token) return;
+    if (token !== state.token || !state.open) return;
     resetPath(plane, board);
     state.busy = false;
     setInput(true);
@@ -506,11 +531,27 @@
     showResult(word, path, stars, revealed);
   }
 
+  function fillResult(word, path) {
+    $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
+    $('#res-steps').classList.toggle('long', path.length > 3);
+    $('#res-steps').innerHTML = path.map((s) => {
+      const cons = s.type === 'consonant';
+      return '<span class="step ' + (cons ? 'o' : 'p') + '"><b>' + s.syllable + '</b>' + (cons ? s.fromC + '→' + s.target : arrowGlyph(s.vector)) + '</span>';
+    }).join('');
+    const others = state.puzzle.answers.map((a) => a.word).filter((w) => w !== word);
+    const det = $('#res-others');
+    det.open = false;
+    det.hidden = !others.length;
+    det.querySelector('summary').textContent = '다른 정답 ' + others.length + '개';
+    det.querySelector('p').textContent = others.slice(0, 40).join(' · ');
+  }
+
   function showResult(word, path, stars, revealed) {
     const st = STAGES[state.stage - 1];
     const k = $('#res-kicker');
     k.textContent = revealed ? '정답 공개' : st.boss ? '보스 격파 · ' + st.title : '스테이지 ' + state.stage + ' 클리어';
     k.className = 'kicker' + (revealed ? ' muted' : st.boss ? ' boss' : '');
+    $('#res-stars').hidden = false;
     $('#res-stars').innerHTML = [1, 2, 3].map((i) => STAR(i <= stars)).join('');
     $('#res-word').innerHTML = [...word].map((c) => '<span>' + c + '</span>').join('');
     $('#res-steps').classList.toggle('long', path.length > 3);
@@ -525,24 +566,26 @@
     det.querySelector('summary').textContent = '다른 정답 ' + others.length + '개';
     det.querySelector('p').textContent = others.slice(0, 40).join(' · ');
     $('#res-next').textContent = state.stage < TOTAL ? '스테이지 ' + (state.stage + 1) : '정상으로';
+    $('#res-map').textContent = '지도';
     openSheet('#result');
   }
 
   function onHint() {
     if (state.mode === 'tutorial') { finishTutorial(); return; }
-    if (!state.open || state.busy) return;
+    if (state.mode === 'daily' || !state.open || state.busy) return;
     if (!state.hints) {
       state.hints = 1;
       state.hintAnswer = state.puzzle.answers[0];
       $('#btn-hint').textContent = '정답 보기';
       $('#answer').value = '';
       renderAbilities();
-      toast('첫 글자를 알려 드렸어요 · 별 2개');
+      toast(state.mode === 'stage' ? '첫 글자를 알려 드렸어요 · 별 2개' : '첫 글자를 알려 드렸어요');
       return;
     }
     const a = state.hintAnswer || state.puzzle.answers[0];
     $('#answer').value = a.word;
-    clearStage(a.word, a.path, true);
+    if (state.mode === 'endless') clearEndless(a.word, a.path, true);
+    else clearStage(a.word, a.path, true);
   }
 
   function showEnding() {
@@ -563,6 +606,312 @@
   }
 
   /* ---------- 튜토리얼 ---------- */
+  /* ---------- 무한 모드 ---------- */
+  let genCtx = null;
+  const ctx = () => genCtx || (genCtx = Gen.makeContext(window.FAM));
+  const LEVEL_LABEL = { easy: '쉬움', normal: '보통', hard: '어려움' };
+  const endlessOf = (lv) => progress.endless[lv] || (progress.endless[lv] = { best: 0 });
+
+  function startEndless(level) {
+    state.level = level;
+    progress.level = level;
+    const used = progress.used[level] || (progress.used[level] = []);
+    let p = Gen.generate(ctx(), level, Math.random, { avoid: new Set(used) });
+    if (!p) p = Gen.generate(ctx(), level, Math.random);
+    const rules = loadPuzzle('endless', p.board, p.answers);
+    state.endlessKey = p.key;
+    $('#stage-title').textContent = '무한 · ' + LEVEL_LABEL[level];
+    renderStreak();
+    if (!showRuleIntro(rules) && finePointer) $('#answer').focus();
+  }
+
+  function renderStreak() {
+    const e = endlessOf(state.level);
+    $('#bar-sub').textContent = '연속 ' + (state.streak || 0) + ' · 최고 ' + e.best;
+  }
+
+  async function clearEndless(word, path, revealed) {
+    state.open = false;
+    state.busy = true;
+    setInput(false);
+    $('#answer').blur();
+    const e = endlessOf(state.level);
+    state.streak = revealed ? 0 : (state.streak || 0) + 1;
+    e.best = Math.max(e.best, state.streak);
+    const used = progress.used[state.level];
+    used.push(state.endlessKey);
+    if (used.length > 600) used.splice(0, used.length - 600);
+    saveProgress();
+    renderStreak();
+    const token = state.token;
+    await playPath(state.plane, state.puzzle.board, path, () => token === state.token);
+    if (token !== state.token) return;
+    await sleep(250);
+    const k = $('#res-kicker');
+    k.textContent = revealed ? '정답 공개 · 연속 기록 초기화' : '연속 ' + state.streak;
+    k.className = 'kicker' + (revealed ? ' muted' : '');
+    $('#res-stars').hidden = true;
+    fillResult(word, path);
+    $('#res-next').textContent = '다음 문제';
+    $('#res-map').textContent = '처음으로';
+    openSheet('#result');
+  }
+
+  /* ---------- 오늘의 도전 ---------- */
+  const DAILY_KEY = 'jamo-jump-daily';
+  const DAILY_LEVELS = ['easy', 'normal', 'hard'];
+  const MAX_RESUMES = 2;
+  // 한국 시간 기준 날짜. 모든 기기가 같은 날 같은 문제를 받는다.
+  const todayKey = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const freshDaily = () => ({ date: todayKey(), status: 'ready', round: 0, times: [null, null, null], deadline: null, resumes: 0, final: false });
+  let daily = (() => {
+    const d = JSON.parse(localStorage.getItem(DAILY_KEY) || 'null');
+    return d && d.date === todayKey() ? d : freshDaily();
+  })();
+  const saveDaily = () => localStorage.setItem(DAILY_KEY, JSON.stringify(daily));
+  const dailyCache = {};
+  const secondsOf = (r) => Gen.LEVELS[DAILY_LEVELS[r]].seconds;
+  const fmt = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  const dailyStars = () => daily.times.filter(Boolean).length;
+  const dateLabel = (k) => Number(k.slice(5, 7)) + '월 ' + Number(k.slice(8, 10)) + '일';
+
+  function dailyPuzzle(r) {
+    const id = daily.date + ':' + r;
+    if (!dailyCache[id]) {
+      const rng = Gen.mulberry32(Gen.hashSeed('daily:' + id));
+      dailyCache[id] = Gen.generate(ctx(), DAILY_LEVELS[r], rng, { maxTries: 20000 }) || Gen.generate(ctx(), 'normal', rng);
+    }
+    return dailyCache[id];
+  }
+
+  // 날짜가 바뀌었거나 진행 중인 라운드의 시간이 다 됐으면 상태를 맞춘다.
+  function syncDaily() {
+    if (daily.date !== todayKey()) { daily = freshDaily(); saveDaily(); }
+    if (daily.status === 'playing' && daily.deadline && Date.now() >= daily.deadline) failDaily();
+  }
+
+  function failDaily() {
+    daily.status = 'failed';
+    daily.deadline = null;
+    if (daily.resumes >= MAX_RESUMES) daily.final = true;
+    saveDaily();
+  }
+
+  function openDaily() {
+    syncDaily();
+    if (daily.status === 'playing' || daily.status === 'between') { startDailyRound(); return; }
+    if (daily.status === 'failed' || daily.status === 'done') { showSettle(); return; }
+    state.introGo = () => startDailyRound();
+    $('#intro-badge').className = 'intro-badge boss';
+    $('#intro-badge').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
+    $('#intro-title').textContent = '3라운드, 하루 한 번';
+    $('#intro-sub').innerHTML = '쉬움 60초 → 보통 90초 → 어려움 120초.<br>시간 안에 못 풀면 거기서 끝나요. 깬 라운드마다 별 하나.<br>결과를 공유하면 하루 두 번까지 이어서 할 수 있어요.';
+    $('#intro-go').textContent = '시작';
+    openSheet('#intro', true);
+  }
+
+  function startDailyRound() {
+    const r = daily.round;
+    const p = dailyPuzzle(r);
+    if (!daily.deadline) daily.deadline = Date.now() + secondsOf(r) * 1000;
+    daily.status = 'playing';
+    saveDaily();
+    loadPuzzle('daily', p.board, p.answers);
+    state.dailyRound = r;
+    $('#stage-title').textContent = '오늘의 도전';
+    $('#bar-sub').textContent = (r + 1) + '/3 · ' + LEVEL_LABEL[DAILY_LEVELS[r]];
+    startClock();
+    if (finePointer) $('#answer').focus();
+  }
+
+  function startClock() {
+    clearInterval(state.clock);
+    const tick = () => {
+      if (state.mode !== 'daily' || !daily.deadline) { clearInterval(state.clock); return; }
+      const left = daily.deadline - Date.now();
+      const total = secondsOf(daily.round) * 1000;
+      $('#timer-fill').style.width = Math.max(0, (left / total) * 100) + '%';
+      $('#timer').classList.toggle('low', left < 10000);
+      const c = $('#clock');
+      c.textContent = fmt(left);
+      c.classList.toggle('low', left < 10000);
+      if (left <= 0 && state.open) timeUp();
+    };
+    tick();
+    state.clock = setInterval(tick, 200);
+  }
+
+  function timeUp() {
+    clearInterval(state.clock);
+    state.token++;
+    state.open = false;
+    state.busy = false;
+    setInput(false);
+    $('#answer').blur();
+    failDaily();
+    $('#clock').textContent = '0:00';
+    toast('시간 초과', 'bad');
+    if (navigator.vibrate) navigator.vibrate([80, 60, 80]);
+    setTimeout(() => { if (state.mode === 'daily') showSettle(); }, 900);
+  }
+
+  async function clearDaily(word, path) {
+    const r = daily.round;
+    const used = secondsOf(r) * 1000 - (daily.deadline - Date.now());
+    clearInterval(state.clock);
+    state.open = false;
+    state.busy = true;
+    setInput(false);
+    $('#answer').blur();
+    daily.times[r] = { ms: Math.max(0, used), word };
+    daily.deadline = null;
+    if (r === 2) { daily.status = 'done'; daily.final = true; } else { daily.round = r + 1; daily.status = 'between'; }
+    saveDaily();
+    const token = state.token;
+    await playPath(state.plane, state.puzzle.board, path, () => token === state.token);
+    if (token !== state.token) return;
+    await sleep(250);
+    if (daily.status === 'done') { showSettle(); return; }
+    const k = $('#res-kicker');
+    k.textContent = (r + 1) + '라운드 클리어 · ' + fmt(used);
+    k.className = 'kicker';
+    $('#res-stars').hidden = false;
+    $('#res-stars').innerHTML = [0, 1, 2].map((i) => STAR(!!daily.times[i])).join('');
+    fillResult(word, path);
+    $('#res-others').hidden = true;
+    const n = daily.round;
+    $('#res-next').textContent = (n + 1) + '라운드 · ' + LEVEL_LABEL[DAILY_LEVELS[n]] + ' ' + secondsOf(n) + '초';
+    $('#res-map').textContent = '잠깐 쉬기';
+    openSheet('#result');
+  }
+
+  function showSettle() {
+    closeSheets();
+    syncDaily();
+    const failed = daily.status === 'failed';
+    const canResume = failed && !daily.final && daily.resumes < MAX_RESUMES;
+    const stars = dailyStars();
+    $('#settle-kicker').textContent = '오늘의 도전 · ' + dateLabel(daily.date);
+    const t = $('#settle-title');
+    t.textContent = daily.status === 'done' ? '완주' : canResume ? '시간 초과' : stars ? stars + '라운드 통과' : '내일 다시';
+    t.className = 'verdict sm ' + (daily.status === 'done' ? 'ok' : canResume ? 'bad' : '');
+    $('#settle-stars').innerHTML = [0, 1, 2].map((i) => STAR(!!daily.times[i])).join('');
+    $('#settle-rounds').innerHTML = DAILY_LEVELS.map((lv, i) => {
+      const rec = daily.times[i];
+      let right;
+      if (rec) right = '<span class="sr-word">' + rec.word + '</span><span class="sr-time">' + fmt(rec.ms) + '</span>';
+      else if (failed && i === daily.round) right = daily.final
+        ? '<span class="sr-fail">시간 초과</span><span class="sr-answer">정답 <b>' + dailyPuzzle(i).key + '</b></span>'
+        : '<span class="sr-fail">시간 초과</span>';
+      else right = '<span class="sr-none">' + (daily.final ? '도전 못 함' : '—') + '</span>';
+      return '<li class="' + (rec ? 'done' : failed && i === daily.round ? 'fail' : '') + '"><span class="sr-lv">' + LEVEL_LABEL[lv] + ' <small>' + secondsOf(i) + '초</small></span>' + right + '</li>';
+    }).join('');
+    $('#settle-next').textContent = daily.final ? nextDailyText() : '정답은 오늘 도전이 끝나면 공개돼요.';
+    const pri = $('#settle-primary');
+    const sec = $('#settle-secondary');
+    if (canResume) {
+      pri.textContent = '공유하고 이어하기 · ' + (MAX_RESUMES - daily.resumes) + '회 남음';
+      pri.onclick = async () => {
+        if (!(await shareDaily())) return;
+        daily.resumes++;
+        daily.status = 'playing';
+        daily.deadline = null;
+        saveDaily();
+        startDailyRound();
+      };
+      sec.textContent = '오늘은 여기까지';
+      sec.onclick = () => { daily.final = true; saveDaily(); showSettle(); };
+    } else {
+      pri.textContent = '결과 공유';
+      pri.onclick = () => shareDaily();
+      sec.textContent = '처음으로';
+      sec.onclick = openHome;
+    }
+    setTimeout(() => openSheet('#settle', true), 200);
+  }
+
+  function nextDailyText() {
+    const now = new Date(Date.now() + 9 * 3600e3);
+    const left = 24 * 3600e3 - ((now.getUTCHours() * 60 + now.getUTCMinutes()) * 60e3 + now.getUTCSeconds() * 1e3);
+    const h = Math.floor(left / 3600e3), m = Math.floor((left % 3600e3) / 60e3);
+    return '다음 도전까지 ' + (h ? h + '시간 ' : '') + m + '분';
+  }
+
+  async function shareDaily() {
+    const rows = DAILY_LEVELS.map((lv, i) => {
+      const rec = daily.times[i];
+      return (rec ? '🟢 ' : i === daily.round && daily.status === 'failed' ? '🔴 ' : '⚪ ') + LEVEL_LABEL[lv] + ' ' + (rec ? fmt(rec.ms) : i === daily.round && daily.status === 'failed' ? '시간 초과' : '-');
+    });
+    const text = ['자모 점프 · 오늘의 도전 ' + daily.date.slice(5).replace('-', '/'), '★'.repeat(dailyStars()) + '☆'.repeat(3 - dailyStars()), ...rows,
+      daily.resumes ? '(이어하기 ' + daily.resumes + '회)' : '', location.href.split(/[?#]/)[0]].filter(Boolean).join('\n');
+    try {
+      if (navigator.share) { await navigator.share({ text }); return true; }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return false; // 공유 창을 닫은 경우만 이어하기를 막는다
+    }
+    if (await copyText(text)) toast('결과를 복사했어요. 친구에게 붙여 넣어 주세요', 'ok');
+    else toast('복사가 막혀 있어요. 화면을 캡처해 공유해 주세요');
+    return true;
+  }
+
+  async function copyText(text) {
+    // 권한 창 때문에 응답이 오지 않는 브라우저가 있어 1.2초 안에 끝나지 않으면 다른 방식으로 복사한다.
+    try {
+      const ok = await Promise.race([
+        navigator.clipboard.writeText(text).then(() => true),
+        new Promise((r) => setTimeout(() => r(false), 1200)),
+      ]);
+      if (ok) return true;
+    } catch (e) { /* 아래 방식으로 다시 시도 */ }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+
+  /* ---------- 처음 화면 ---------- */
+  function openHome() {
+    state.token++;
+    state.mode = 'home';
+    state.open = false;
+    clearInterval(state.clock);
+    closeSheets();
+    show('home');
+    renderHome();
+  }
+
+  function renderHome() {
+    syncDaily();
+    $('#daily-date').textContent = dateLabel(daily.date);
+    $('#daily-rounds').innerHTML = DAILY_LEVELS.map((lv, i) => {
+      const rec = daily.times[i];
+      const fail = daily.status === 'failed' && i === daily.round;
+      const cls = rec ? 'done' : fail ? 'fail' : (daily.status === 'playing' || daily.status === 'between') && i === daily.round ? 'now' : '';
+      return '<span class="dr ' + cls + '"><b>' + LEVEL_LABEL[lv] + '</b><small>' + (rec ? fmt(rec.ms) : fail ? '시간 초과' : secondsOf(i) + '초') + '</small></span>';
+    }).join('');
+    let note = '하루 한 번 · 공유하면 2번 이어하기';
+    let cta = '도전';
+    if (daily.status === 'playing') { note = '진행 중 · ' + fmt(daily.deadline - Date.now()) + ' 남음'; cta = '이어하기'; }
+    else if (daily.status === 'between') { note = (daily.round + 1) + '라운드 대기 중'; cta = '이어하기'; }
+    else if (daily.status === 'failed' && !daily.final) { note = '이어하기 ' + (MAX_RESUMES - daily.resumes) + '회 남음'; cta = '결과 보기'; }
+    else if (daily.final) { note = '★ ' + dailyStars() + ' · ' + nextDailyText(); cta = '결과 보기'; }
+    $('#daily-note').textContent = note;
+    $('#daily-cta').textContent = cta;
+    $('#daily-card').classList.toggle('finished', daily.final);
+    const lv = progress.level || 'normal';
+    document.querySelectorAll('#home .seg button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === lv)));
+    $('#endless-best').textContent = '최고 연속 ' + endlessOf(lv).best;
+    $('#climb-meta').textContent = progress.best >= TOTAL ? '완주 · ★ ' + totalStars() : progress.best + ' / ' + TOTAL + ' · ★ ' + totalStars();
+    clearInterval(state.homeTick);
+    if (daily.status === 'playing') state.homeTick = setInterval(() => { if (state.mode === 'home') renderHome(); else clearInterval(state.homeTick); }, 1000);
+  }
+
   const TUT_STEPS = 11;
 
   function coachLetters(word, used) {
@@ -743,7 +1092,7 @@
     tutConcept(CONCEPT.credit);
     await coach({ step: 10, title: '만든 이야기',
       sub: '자모 점프는 웹 예능 〈네 가지 소원〉 EP.2의 <b>숨바꼭질</b> 게임을 차용해 만들었어요. <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상 보기</a>',
-      next: '스테이지 1 시작' });
+      next: '시작하기' });
     if (!alive()) return;
     finishTutorial();
   }
@@ -752,8 +1101,7 @@
     state.tutWait = null;
     progress.tut = true;
     saveProgress();
-    if (progress.best > 0) openMap();
-    else startStage(1);
+    openHome();
   }
 
   /* ---------- 시작 ---------- */
@@ -762,7 +1110,7 @@
     if (routed) return;
     routed = true;
     if (!progress.tut) runTutorial();
-    else openMap();
+    else openHome();
   }
 
   $('#splash').addEventListener('click', route);
@@ -774,16 +1122,44 @@
   });
   $('#map-play').addEventListener('click', () => startStage(currentStage()));
   $('#btn-tutorial').addEventListener('click', runTutorial);
-  $('#btn-back').addEventListener('click', openMap);
+  $('#btn-back').addEventListener('click', () => {
+    if (state.mode === 'stage') openMap();
+    else if (state.mode === 'tutorial') finishTutorial();
+    else openHome();
+  });
+  $('#map-back').addEventListener('click', openHome);
+  $('#daily-card').addEventListener('click', openDaily);
+  $('#climb-card').addEventListener('click', openMap);
+  document.querySelectorAll('#home .seg button').forEach((b) => b.addEventListener('click', () => {
+    progress.level = b.dataset.level;
+    saveProgress();
+    renderHome();
+  }));
+  $('#endless-go').addEventListener('click', () => { state.streak = 0; startEndless(progress.level || 'normal'); });
+  $('#settle').addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.mode === 'daily') { syncDaily(); if (daily.status === 'failed' && state.open) timeUp(); }
+  });
   $('#btn-hint').addEventListener('click', onHint);
   $('#dock').addEventListener('submit', onSubmit);
   $('#answer').addEventListener('input', renderAbilities);
-  $('#intro-go').addEventListener('click', () => { closeSheets(); if (finePointer) $('#answer').focus(); });
-  $('#res-next').addEventListener('click', () => { if (state.stage < TOTAL) startStage(state.stage + 1); else showEnding(); });
-  $('#res-map').addEventListener('click', openMap);
+  $('#intro-go').addEventListener('click', () => {
+    const go = state.introGo;
+    state.introGo = null;
+    closeSheets();
+    if (go) go();
+    else if (finePointer) $('#answer').focus();
+  });
+  $('#res-next').addEventListener('click', () => {
+    if (state.mode === 'endless') startEndless(state.level);
+    else if (state.mode === 'daily') startDailyRound();
+    else if (state.stage < TOTAL) startStage(state.stage + 1);
+    else showEnding();
+  });
+  $('#res-map').addEventListener('click', () => { if (state.mode === 'stage') openMap(); else openHome(); });
   $('#end-share').addEventListener('click', share);
   $('#end-map').addEventListener('click', openMap);
 
   // 테스트와 디버깅용
-  window.__game = { state, progress, startStage, runTutorial, openMap };
+  window.__game = { state, progress, startStage, runTutorial, openMap, openHome, startEndless, getDaily: () => daily, setDaily: (d) => { daily = d; saveDaily(); }, dailyPuzzle };
 })();

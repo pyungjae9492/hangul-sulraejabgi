@@ -528,6 +528,67 @@ b { font-weight: 800; }
 .verdict { margin: 6px 0 4px; text-align: center; font-family: var(--display); font-weight: 400; font-size: 64px; line-height: 1.1; color: var(--gold); }
 .end-stars { margin: 0; text-align: center; font-size: 18px; font-weight: 800; color: var(--soft); }
 
+/* ---------- 처음 화면: 모드 고르기 ---------- */
+#home { padding: calc(var(--safe-t) + 12px) 0 calc(var(--safe-b) + 20px); gap: 12px; }
+.home-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.card { width: 100%; display: grid; gap: 14px; padding: 18px; text-align: left; border-radius: 24px; background: var(--mat); border: 1px solid var(--line); transition: transform .12s; }
+button.card:active { transform: scale(.985); }
+.card-top, .card-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.card-kicker { font-family: var(--display); font-size: 24px; line-height: 1.1; }
+.card-meta { font-size: 13px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.card.daily { padding: 20px; background: linear-gradient(160deg, #2C1A20, #1B1317 55%, #17181D); border-color: rgba(255, 90, 95, .35); }
+.daily-rounds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dr { display: grid; gap: 4px; justify-items: center; padding: 12px 6px; border-radius: 16px; background: rgba(0, 0, 0, .28); border: 1px solid var(--line); }
+.dr b { font-family: var(--display); font-weight: 400; font-size: 18px; }
+.dr small { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dr.done { border-color: rgba(61, 220, 151, .55); }
+.dr.done small { color: var(--mint); }
+.dr.fail { border-color: rgba(255, 90, 95, .55); }
+.dr.fail small { color: var(--coral); }
+.dr.now { border-color: var(--text); }
+.card-note { font-size: 13px; font-weight: 600; color: var(--soft); }
+.card-cta { flex: none; padding: 10px 18px; border-radius: 999px; background: var(--coral); color: #fff; font-size: 15px; font-weight: 800; }
+.card.daily.finished .card-cta { background: var(--tile); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 16px; background: var(--ink); border: 1px solid var(--line); }
+.seg button { padding: 10px 6px; border-radius: 12px; font-size: 14px; font-weight: 700; color: var(--muted); transition: background .2s, color .2s; }
+.seg button[aria-checked="true"] { background: var(--tile); color: var(--text); }
+.card.endless .btn-primary { height: 52px; }
+.card.climb { grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 16px 18px; }
+.card.climb .card-kicker { font-size: 20px; }
+.chev { font-size: 26px; line-height: 1; opacity: .5; }
+#home .map-credit { margin-top: auto; padding-top: 10px; }
+
+.map-title { font-family: var(--display); font-weight: 400; font-size: 20px; }
+
+/* ---------- 상단 바: 무한/도전 ---------- */
+.bar-right { justify-self: end; display: flex; align-items: center; }
+.bar-sub { font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.timer { width: 150px; height: 6px; border-radius: 3px; background: var(--tile); overflow: hidden; }
+.timer i { display: block; height: 100%; width: 100%; background: var(--gold); transition: width .2s linear, background .3s; }
+.timer.low i { background: var(--coral); }
+.clock { font-family: var(--display); font-size: 24px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.clock.low { color: var(--coral); animation: blink 1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .45; } }
+
+/* ---------- 도전 정산 ---------- */
+.verdict.sm { font-size: 48px; color: var(--text); }
+.verdict.ok { color: var(--mint); }
+.verdict.bad { color: var(--coral); }
+.settle-rounds { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; }
+.settle-rounds li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: #1F2128; border: 1px solid transparent; }
+.settle-rounds li.done { border-color: rgba(61, 220, 151, .3); }
+.settle-rounds li.fail { border-color: rgba(255, 90, 95, .35); }
+.sr-lv { flex: 1; font-weight: 800; }
+.sr-lv small { margin-left: 4px; font-weight: 700; color: var(--muted); }
+.sr-word { font-family: var(--display); font-size: 19px; }
+.sr-word.dim { color: var(--muted); }
+.sr-time { min-width: 42px; text-align: right; font-weight: 800; color: var(--mint); font-variant-numeric: tabular-nums; }
+.sr-fail { font-size: 13px; font-weight: 800; color: var(--coral); }
+.sr-answer { font-size: 13px; color: var(--muted); }
+.sr-answer b { font-family: var(--display); font-weight: 400; font-size: 17px; color: var(--soft); margin-left: 2px; }
+.sr-none { font-size: 13px; font-weight: 700; color: var(--dim); }
+.settle-next { margin: 12px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
+
 @media (min-width: 560px) {
   .bottom { margin: 0 0 16px; border-radius: 24px; border: 1px solid var(--line); }
 }

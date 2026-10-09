@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-  <link rel="stylesheet" href="style.css?v=10" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
   <div id="app">
@@ -24,20 +24,50 @@
       </div>
     </section>
 
+    <section id="home" class="screen" aria-label="처음 화면">
+      <header class="home-head">
+        <div class="mini-logo" aria-label="자모 점프"><i>자</i><i>모</i><i>점</i><i>프</i></div>
+        <button class="icon-btn" id="btn-tutorial" type="button" aria-label="튜토리얼 다시 보기">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" /></svg>
+        </button>
+      </header>
+
+      <button id="daily-card" class="card daily" type="button">
+        <span class="card-top"><span class="card-kicker">오늘의 도전</span><span id="daily-date" class="card-meta"></span></span>
+        <span id="daily-rounds" class="daily-rounds"></span>
+        <span class="card-bottom"><span id="daily-note" class="card-note"></span><span id="daily-cta" class="card-cta"></span></span>
+      </button>
+
+      <div class="card endless">
+        <div class="card-top"><span class="card-kicker">무한 모드</span><span id="endless-best" class="card-meta"></span></div>
+        <div class="seg" role="radiogroup" aria-label="무한 모드 난이도">
+          <button type="button" role="radio" data-level="easy" aria-checked="false">쉬움</button>
+          <button type="button" role="radio" data-level="normal" aria-checked="true">보통</button>
+          <button type="button" role="radio" data-level="hard" aria-checked="false">어려움</button>
+        </div>
+        <button id="endless-go" class="btn-primary wide" type="button">시작</button>
+      </div>
+
+      <button id="climb-card" class="card climb" type="button">
+        <span class="card-kicker">20단계 등반</span>
+        <span id="climb-meta" class="card-meta"></span>
+        <span class="chev" aria-hidden="true">›</span>
+      </button>
+
+      <p class="map-credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요 · <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상</a></p>
+    </section>
+
     <section id="map" class="screen" aria-label="스테이지 지도">
       <header class="map-head">
-        <div class="mini-logo" aria-label="자모 점프"><i>자</i><i>모</i><i>점</i><i>프</i></div>
-        <div class="map-head-right">
-          <span id="star-total" class="star-total"></span>
-          <button class="icon-btn" id="btn-tutorial" type="button" aria-label="튜토리얼 다시 보기">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2" /></svg>
-          </button>
-        </div>
+        <button class="icon-btn" id="map-back" type="button" aria-label="처음으로">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        </button>
+        <strong class="map-title">20단계 등반</strong>
+        <span id="star-total" class="star-total"></span>
       </header>
       <div id="tower-wrap" class="tower-wrap"><div id="tower" class="tower"></div></div>
       <footer class="map-foot">
         <button id="map-play" class="play-btn" type="button"></button>
-        <p class="map-credit">〈네 가지 소원〉 EP.2 숨바꼭질 게임을 차용해 만들었어요 · <a href="https://youtu.be/jtg5pXJ7cQM" target="_blank" rel="noopener">원본 영상</a></p>
       </footer>
     </section>
 
@@ -49,8 +79,13 @@
         <div class="bar-mid">
           <strong id="stage-title" class="stage-title"></strong>
           <div id="prog" class="prog" aria-hidden="true"></div>
+          <span id="bar-sub" class="bar-sub" hidden></span>
+          <div id="timer" class="timer" hidden><i id="timer-fill"></i></div>
         </div>
-        <button class="pill-btn" id="btn-hint" type="button"></button>
+        <div class="bar-right">
+          <button class="pill-btn" id="btn-hint" type="button"></button>
+          <span id="clock" class="clock" hidden></span>
+        </div>
       </header>
 
       <p id="cond" class="cond" hidden></p>
@@ -103,6 +138,19 @@
     </div>
   </section>
 
+  <section id="settle" class="sheet" aria-hidden="true" aria-labelledby="settle-title">
+    <div class="handle" aria-hidden="true"></div>
+    <p id="settle-kicker" class="kicker muted"></p>
+    <h2 id="settle-title" class="verdict sm"></h2>
+    <div id="settle-stars" class="stars-row"></div>
+    <ul id="settle-rounds" class="settle-rounds"></ul>
+    <p id="settle-next" class="settle-next"></p>
+    <div class="sheet-actions">
+      <button id="settle-primary" class="btn-primary wide" type="button"></button>
+      <button id="settle-secondary" class="btn-text" type="button"></button>
+    </div>
+  </section>
+
   <section id="ending" class="sheet" aria-hidden="true" aria-labelledby="end-title">
     <div class="handle" aria-hidden="true"></div>
     <p class="kicker ok">20 스테이지 완주</p>
@@ -115,9 +163,11 @@
     </div>
   </section>
 
-  <script src="words.js?v=10"></script>
-  <script src="engine.js?v=10"></script>
-  <script src="stages.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="words.js?v=11"></script>
+  <script src="fam.js?v=11"></script>
+  <script src="engine.js?v=11"></script>
+  <script src="gen.js?v=11"></script>
+  <script src="stages.js?v=11"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>

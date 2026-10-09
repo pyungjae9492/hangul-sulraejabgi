@@ -134,3 +134,22 @@ test('모든 경로 단계가 규칙대로 성립한다 (엔진과 독립 검증
     }
   }
 });
+
+test('실시간 생성기: 난이도별로 규칙대로 풀리는 문제를 만들고, 같은 시드면 같은 문제', () => {
+  global.window = global.window || {};
+  require('../fam.js');
+  const G = require('../gen.js');
+  const ctx = G.makeContext(window.FAM);
+  for (const lv of ['easy', 'normal', 'hard']) {
+    for (let i = 0; i < 15; i++) {
+      const p = G.generate(ctx, lv, G.mulberry32(G.hashSeed(lv + i)));
+      assert.ok(p, lv + i);
+      const L = G.LEVELS[lv];
+      assert.ok(p.answers.length >= L.fam[0] && p.answers.length <= L.fam[1]);
+      for (const w of p.answers) assert.ok(H.findPath(p.board, w), lv + ' ' + w);
+    }
+  }
+  const a = G.generate(ctx, 'hard', G.mulberry32(G.hashSeed('daily:2026-10-09:2')));
+  const b = G.generate(ctx, 'hard', G.mulberry32(G.hashSeed('daily:2026-10-09:2')));
+  assert.deepEqual(a, b);
+});
