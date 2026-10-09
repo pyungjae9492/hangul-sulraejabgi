@@ -189,6 +189,6 @@
 
   return {
     CHO, JUNG, JONG, VOWEL_MOVES, BOARD_CONSONANTS, DIFFICULTY,
-    decompose, abilitiesOf, isHangulWord, makeBoardIndex, findPath, solveAll, generatePuzzle, randomBoard,
+    decompose, abilitiesOf, isHangulWord, makeBoardIndex, movesFrom, findPath, solveAll, generatePuzzle, randomBoard,
   };
 });
